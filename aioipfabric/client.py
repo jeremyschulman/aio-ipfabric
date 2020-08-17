@@ -16,8 +16,8 @@
 from .inventory import IPFInventoryMixin
 from .configs import IPFConfigsMixin
 
-__all__ = ["IPFClient"]
+__all__ = ["IPFabricClient"]
 
 
-class IPFClient(IPFInventoryMixin, IPFConfigsMixin):
+class IPFabricClient(IPFInventoryMixin, IPFConfigsMixin):
     pass
