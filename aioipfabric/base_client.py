@@ -13,16 +13,45 @@
 #  limitations under the License.
 #
 
+# -----------------------------------------------------------------------------
+# System Improts
+# -----------------------------------------------------------------------------
+
 from typing import Optional, AnyStr
 from os import environ, getenv
-from .consts import ENV, API_VER
 
+# -----------------------------------------------------------------------------
+# Private Improts
+# -----------------------------------------------------------------------------
+
+from .consts import ENV, API_VER
 from .api import IPFSession
+
+# -----------------------------------------------------------------------------
+# Exports
+# -----------------------------------------------------------------------------
 
 __all__ = ["IPFBaseClient"]
 
 
+# -----------------------------------------------------------------------------
+#
+#                           CODE BEGINS
+#
+# -----------------------------------------------------------------------------
+
+
 class IPFBaseClient(object):
+    """
+    The IPFabricClient instances is composed of one or more Mixins that are a
+    subclass of IPFBaseClient.  Put another way, he IPFBaseClient provides the
+    common code that is available to all Mixins.
+
+    The primary purpose of the IPFBaseClass instance is to provide the `api`
+    attribute, which is an instance of the IPFSession (async HTTP client
+    instance).
+    """
+
     def __init__(
         self,
         base_url: Optional[AnyStr] = None,
@@ -32,15 +61,27 @@ class IPFBaseClient(object):
     ):
         """
         Create an IP Fabric Client instance
+
         Parameters
         ----------
         base_url : str
             The IP Fabric system HTTPS URL, for example:
             https://my-ipfabric-server/
 
+        username: str
+            The IPF login user-name value
+
+        password: str
+            The IPF login password value
+
         token : str
             The IP Fabric Refresh Token that will be used to create the Access
             Token required by API calls.
+
+        Notes
+        -----
+        The Caller can provide either the login credentials (username, password)
+        or the refresh token.  One of these two are required.
         """
 
         token = token or getenv(ENV.token)

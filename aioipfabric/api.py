@@ -13,15 +13,49 @@
 #  limitations under the License.
 #
 
+# -----------------------------------------------------------------------------
+# System Improts
+# -----------------------------------------------------------------------------
+
 import asyncio
 from typing import Optional
 
+# -----------------------------------------------------------------------------
+# Public Improts
+# -----------------------------------------------------------------------------
+
 from httpx import AsyncClient
+
+# -----------------------------------------------------------------------------
+# Private Improts
+# -----------------------------------------------------------------------------
 
 from .consts import URIs
 
+# -----------------------------------------------------------------------------
+# Exports
+# -----------------------------------------------------------------------------
+
+__all__ = ["IPFSession"]
+
+
+# -----------------------------------------------------------------------------
+#
+#                           CODE BEGINS
+#
+# -----------------------------------------------------------------------------
+
 
 class IPFSession(AsyncClient):
+    """
+    The IPFSession instance is the asyncio base client used to interact with the
+    IP Fabric API via REST calls.  The primary feature of the IPFSession class
+    is to handle the authentication via login credentials and tokens.
+
+    An instance of this class will be created by the IPFBaseClient, which in
+    turns makes the api accessbile to any IPFabricClient instances.
+    """
+
     def __init__(self, base_url, token=None, username=None, password=None):
 
         super().__init__(base_url=base_url, verify=False)
@@ -49,16 +83,23 @@ class IPFSession(AsyncClient):
         return self.__refresh_token
 
     async def refresh_token(self, token: Optional[str] = None):
+        """ using the refresh token, obtain a new access token """
+
+        if token:
+            self.__refresh_token = token
+
         assert self.__refresh_token is not None
         await self.__refresh_access_token(self.__refresh_token)
 
     async def __refresh_access_token(self, refresh_token):
+        """ underlying API call to update the access token """
         res = await self.post(URIs.token_refresh, json={"refreshToken": refresh_token})
         res.raise_for_status()
         body = res.json()
         self.__access_token = body["accessToken"]
 
     async def __login(self, username, password):
+        """ underlying API to call to authenticate using login credentials """
         res = await self.post(
             URIs.login, json={"username": username, "password": password}
         )

@@ -13,11 +13,37 @@
 #  limitations under the License.
 #
 
-from .inventory import IPFInventoryMixin
-from .configs import IPFConfigsMixin
+
+# -----------------------------------------------------------------------------
+# Private Improts
+# -----------------------------------------------------------------------------
+
+from .mixin_inventory import IPFInventoryMixin
+from .mixin_configs import IPFConfigsMixin
+
+# -----------------------------------------------------------------------------
+# Exports
+# -----------------------------------------------------------------------------
 
 __all__ = ["IPFabricClient"]
 
 
+# -----------------------------------------------------------------------------
+#
+#                           CODE BEGINS
+#
+# -----------------------------------------------------------------------------
+
+
 class IPFabricClient(IPFInventoryMixin, IPFConfigsMixin):
+    """
+    An instance IPFabricClient is used to interact with the IP Fabric
+    system API via methods that abstract the underlying API calls.
+
+    The IPFabricClient is composed of mixins, each of which address a different
+    aspect of the IP Fabric product.  This composition structure allows the
+    Developer to define a client with only those feature aspects that they need
+    for their program.
+    """
+
     pass
