@@ -28,6 +28,13 @@ from .consts import URIs
 
 
 class IPFInventoryMixin(IPFBaseClient):
+    """
+    IP Fabric client mixin supporting the inventory features.
+        - devices
+        - device optics
+        - device managed IP addresses
+    """
+
     @cached_property
     def devices(self):
         """ cache of the existing inventory of devices """
@@ -66,6 +73,7 @@ class IPFInventoryMixin(IPFBaseClient):
         return res.json()
 
     async def fetch_ipaddrs(self):
+        """ couroutine to retrieve all IP addresses used by all managed devices """
         payload = {
             "columns": [
                 "id",
@@ -84,6 +92,7 @@ class IPFInventoryMixin(IPFBaseClient):
         return res.json()
 
     async def fetch_optics(self):
+        """ coroutine to retrieve all optic parts based on an intent verification rule """
         optic_modules = {
             "columns": [
                 "id",

@@ -56,13 +56,33 @@ class IPFSession(AsyncClient):
     """
 
     def __init__(self, base_url, loop, token=None, username=None, password=None):
+        """
+        Initialize the asyncio client session to the IP Fabric API
 
+        Parameters
+        ----------
+        base_url: str
+            The base URL of the IP fabric system
+
+        loop:
+            The asyncio loop associated with this client.
+
+        token: str
+            The refresh token
+
+        username: str
+            The login user-name
+
+        password: str
+            The login password
+        """
         super().__init__(base_url=base_url, verify=False)
 
         self.__refresh_token = token
         self.__access_token = None
 
         async def init_login():
+            """ obtain the initial access token """
             if all((username, password)):
                 await self.__login(username=username, password=password)
             elif token:

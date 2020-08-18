@@ -123,11 +123,12 @@ class IPFBaseClient(object):
         self.active_snapshot = "$last"
 
     @cached_property
-    def snapshots(self):
+    def snapshots(self) -> list:
         """ cached list of snapshots.  Use `del ipf.snapshots` to invalidate the cache """
         return self.loop.run_until_complete(self.fetch_snapshots())
 
-    async def fetch_snapshots(self):
+    async def fetch_snapshots(self) -> list:
+        """ coroutine to retrieve all known snapshots """
         res = await self.api.get(URIs.snapshots)
         res.raise_for_status()
         return res.json()
