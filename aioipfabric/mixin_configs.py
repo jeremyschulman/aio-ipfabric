@@ -13,22 +13,73 @@
 #  limitations under the License.
 #
 
+from typing import Optional
+
 from .base_client import IPFBaseClient
 from .consts import URIs
 
 
 class IPFConfigsMixin(IPFBaseClient):
-    async def fetch_device_config(
-        self, hostname, *domains, sanitized=False, with_body=False
-    ):
+    """
+    Mixin to support fetching device configurations (text)
+    """
 
+    async def fetch_device_config(
+        self,
+        hostname,
+        *domains,
+        exact_match: Optional[bool] = False,
+        sanitized=False,
+        with_body=False,
+    ):
+        """
+        This coroutine is used to return the most recent device
+        configuration (text) for the `hostname` provided.
+
+        Parameters
+        ----------
+        hostname: str
+            The device hostname to find.  By default the call to the API will
+            use the `like` filter so that you do not need to provide an exact
+            match. That said, be careful with the hostname value as it may
+            result in a config content response to the wrong hostname.  If you
+            want an exact match, set `exact_match` to True
+
+        exact_match: Optional[bool]
+            When True will invoke the API with the filter "eq" so that the
+            hostname value must be an exact match.
+
+        domains: Optional[List]
+            Any domain names that need to be used to find the hostname
+            within the inventory
+
+        sanitized: Optional[bool]
+            When True will use the IP Fabric sanitize feature to redanct
+            sensitive information from the configuration content.
+
+        with_body: Optional[bool]
+            When True will return the entire API response body.  By
+            default only the configuration content is returned.
+
+        Returns
+        -------
+        None:
+            When the `hostname` is not found in inventory
+
+        device configuration: str
+            When `with_body` is False (default)
+
+        API response body: dict
+            When `with_body` is True
+        """
         # Find the device configuration record; we only want the most recent
         # configuraiton.
 
         find = (hostname, *(f"{hostname}.{domain}" for domain in domains))
+        match_op = "eq" if exact_match else "like"
 
         for each in find:
-            filters = {"hostname": ["like", each]}
+            filters = {"hostname": [match_op, each]}
             payload = {
                 "columns": [
                     "_id",
@@ -53,6 +104,7 @@ class IPFConfigsMixin(IPFBaseClient):
                 break
 
         else:
+            # if no match found return None
             return None
 
         # obtain the actual configuration text

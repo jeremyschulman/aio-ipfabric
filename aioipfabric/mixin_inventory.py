@@ -18,7 +18,11 @@ from .consts import URIs
 
 
 class IPFInventoryMixin(IPFBaseClient):
-    async def fetch_devices(self):
+    async def fetch_devices(self) -> dict:
+        """
+        This coroutine is used to fetch all device inventory records.  The
+        complete API response body is returned, including the _meta data.
+        """
         payload = {
             "columns": [
                 "id",

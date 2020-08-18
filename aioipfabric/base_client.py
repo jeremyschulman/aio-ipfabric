@@ -13,18 +13,49 @@
 #  limitations under the License.
 #
 
-from typing import Optional, AnyStr
-from os import environ, getenv
-from .consts import ENV, API_VER
+# -----------------------------------------------------------------------------
+# System Improts
+# -----------------------------------------------------------------------------
 
+from typing import Optional, AnyStr, Iterable
+from os import environ, getenv
+
+# -----------------------------------------------------------------------------
+# Private Improts
+# -----------------------------------------------------------------------------
+
+from .consts import ENV, API_VER
 from .api import IPFSession
+
+# -----------------------------------------------------------------------------
+# Exports
+# -----------------------------------------------------------------------------
 
 __all__ = ["IPFBaseClient"]
 
 
+# -----------------------------------------------------------------------------
+#
+#                           CODE BEGINS
+#
+# -----------------------------------------------------------------------------
+
+
 class IPFBaseClient(object):
+    """
+    The IPFabricClient instances is composed of one or more Mixins that are a
+    subclass of IPFBaseClient.  Put another way, he IPFBaseClient provides the
+    common code that is available to all Mixins.
+
+    The primary purpose of the IPFBaseClass instance is to provide the `api`
+    attribute, which is an instance of the IPFSession (async HTTP client
+    instance).
+    """
+
     def __init__(
         self,
+        /,
+        *mixin_classes,
         base_url: Optional[AnyStr] = None,
         token: Optional[AnyStr] = None,
         username: Optional[AnyStr] = None,
@@ -32,15 +63,27 @@ class IPFBaseClient(object):
     ):
         """
         Create an IP Fabric Client instance
+
         Parameters
         ----------
         base_url : str
             The IP Fabric system HTTPS URL, for example:
             https://my-ipfabric-server/
 
+        username: str
+            The IPF login user-name value
+
+        password: str
+            The IPF login password value
+
         token : str
             The IP Fabric Refresh Token that will be used to create the Access
             Token required by API calls.
+
+        Notes
+        -----
+        The Caller can provide either the login credentials (username, password)
+        or the refresh token.  One of these two are required.
         """
 
         token = token or getenv(ENV.token)
@@ -61,3 +104,33 @@ class IPFBaseClient(object):
             username=username,
             password=password,
         )
+
+        # dynamically add any Mixins at the time of client creation.  This
+        # enables the caller to perform the mixin at runtime without having to
+        # define a specific class.
+
+        for mixin_cls in mixin_classes:
+            self.mixin(mixin_cls)
+
+    def mixin(self, mixin_cls):
+        """
+        This method allows the Caller to dynamically add a Mixin class
+        to the existing IPF client instance.
+
+        Parameters
+        ----------
+        mixin_cls: subclass of IPFBaseClass
+            The mixin class whose methods will be added to the existing
+            IPF client instance (self).
+
+        References
+        ----------
+        https://stackoverflow.com/questions/8544983/dynamically-mixin-a-base-class-to-an-instance-in-python
+        """
+        self.__class__ = type(self.__class__.__name__, (self.__class__, mixin_cls), {})
+
+    def __repr__(self) -> Iterable[str]:
+        """ override the default repr to show the IPF system base URL """
+        cls_name = self.__class__.__name__
+        base_url = self.api.base_url
+        return f"{cls_name}: {base_url}"
