@@ -14,20 +14,19 @@
 #
 
 # -----------------------------------------------------------------------------
-# System Improts
+# System Imports
 # -----------------------------------------------------------------------------
 
-import asyncio
 from typing import Optional
 
 # -----------------------------------------------------------------------------
-# Public Improts
+# Public Imports
 # -----------------------------------------------------------------------------
 
 from httpx import AsyncClient
 
 # -----------------------------------------------------------------------------
-# Private Improts
+# Private Imports
 # -----------------------------------------------------------------------------
 
 from .consts import URIs
@@ -56,7 +55,7 @@ class IPFSession(AsyncClient):
     turns makes the api accessbile to any IPFabricClient instances.
     """
 
-    def __init__(self, base_url, token=None, username=None, password=None):
+    def __init__(self, base_url, loop, token=None, username=None, password=None):
 
         super().__init__(base_url=base_url, verify=False)
 
@@ -71,10 +70,9 @@ class IPFSession(AsyncClient):
             else:
                 raise RuntimeError("MISSING required token or (username, password)")
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(init_login())
-
         self.headers["Content-Type"] = "application/json"
+
+        loop.run_until_complete(init_login())
         self.headers["Authorization"] = f"Bearer {self.__access_token}"
 
     @property
@@ -90,6 +88,7 @@ class IPFSession(AsyncClient):
 
         assert self.__refresh_token is not None
         await self.__refresh_access_token(self.__refresh_token)
+        self.headers["Authorization"] = f"Bearer {self.__access_token}"
 
     async def __refresh_access_token(self, refresh_token):
         """ underlying API call to update the access token """

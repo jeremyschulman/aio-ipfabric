@@ -13,11 +13,31 @@
 #  limitations under the License.
 #
 
+# -----------------------------------------------------------------------------
+# System Imports
+# -----------------------------------------------------------------------------
+
+from functools import cached_property
+
+# -----------------------------------------------------------------------------
+# Private Imports
+# -----------------------------------------------------------------------------
+
 from .base_client import IPFBaseClient
 from .consts import URIs
 
 
 class IPFInventoryMixin(IPFBaseClient):
+    @cached_property
+    def devices(self):
+        """ cache of the existing inventory of devices """
+        return self.loop.run_until_complete(self.fetch_devices())["data"]
+
+    @cached_property
+    def device_optics(self):
+        """ cache of the existing inventory of device parts"""
+        return self.loop.run_until_complete(self.fetch_optics())["data"]
+
     async def fetch_devices(self) -> dict:
         """
         This coroutine is used to fetch all device inventory records.  The
@@ -60,5 +80,31 @@ class IPFInventoryMixin(IPFBaseClient):
             "snapshot": self.active_snapshot,
         }
         res = await self.api.post(URIs.managed_ipaddrs, json=payload)
+        res.raise_for_status()
+        return res.json()
+
+    async def fetch_optics(self):
+        optic_modules = {
+            "columns": [
+                "id",
+                "deviceSn",
+                "hostname",
+                "siteKey",
+                "siteName",
+                "deviceId",
+                "name",
+                "dscr",
+                "pid",
+                "sn",
+                "vid",
+                "vendor",
+                "platform",
+                "model",
+            ],
+            "filters": {"pid": ["color", "eq", "0"]},
+            "snapshot": self.active_snapshot,
+            "reports": "/inventory/part-numbers",
+        }
+        res = await self.api.post(URIs.device_parts, json=optic_modules)
         res.raise_for_status()
         return res.json()
