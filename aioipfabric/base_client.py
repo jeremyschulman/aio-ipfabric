@@ -54,6 +54,8 @@ class IPFBaseClient(object):
 
     def __init__(
         self,
+        /,
+        *mixin_classes,
         base_url: Optional[AnyStr] = None,
         token: Optional[AnyStr] = None,
         username: Optional[AnyStr] = None,
@@ -102,6 +104,13 @@ class IPFBaseClient(object):
             username=username,
             password=password,
         )
+
+        # dynamically add any Mixins at the time of client creation.  This
+        # enables the caller to perform the mixin at runtime without having to
+        # define a specific class.
+
+        for mixin_cls in mixin_classes:
+            self.mixin(mixin_cls)
 
     def mixin(self, mixin_cls):
         """
