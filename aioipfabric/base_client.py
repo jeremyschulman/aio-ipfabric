@@ -16,15 +16,16 @@
 # -----------------------------------------------------------------------------
 # System Improts
 # -----------------------------------------------------------------------------
-
+import asyncio
 from typing import Optional, AnyStr, Iterable
 from os import environ, getenv
+from functools import cached_property
 
-# -----------------------------------------------------------------------------
+# ------------f-----------------------------------------------------------------
 # Private Improts
 # -----------------------------------------------------------------------------
 
-from .consts import ENV, API_VER
+from .consts import ENV, API_VER, URIs
 from .api import IPFSession
 
 # -----------------------------------------------------------------------------
@@ -111,6 +112,22 @@ class IPFBaseClient(object):
 
         for mixin_cls in mixin_classes:
             self.mixin(mixin_cls)
+
+        # set the active snapshot to the most recent one using the special named
+        # snapshot value $last.
+
+        self.active_snapshot = "$last"
+
+    @cached_property
+    def snapshots(self):
+        """ cached list of snapshots.  Use `del ipf.snapshots` to invalidate the cache """
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(self.fetch_snapshots())
+
+    async def fetch_snapshots(self):
+        res = await self.api.get(URIs.snapshots)
+        res.raise_for_status()
+        return res.json()
 
     def mixin(self, mixin_cls):
         """

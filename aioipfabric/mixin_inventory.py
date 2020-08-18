@@ -38,7 +38,7 @@ class IPFInventoryMixin(IPFBaseClient):
                 "family",
                 "version",
             ],
-            "snapshot": "$last",
+            "snapshot": self.active_snapshot,
         }
 
         res = await self.api.post(URIs.devices, json=payload)
@@ -57,7 +57,7 @@ class IPFInventoryMixin(IPFBaseClient):
                 "ip",
                 "net",
             ],
-            "snapshot": "$last",
+            "snapshot": self.active_snapshot,
         }
         res = await self.api.post(URIs.managed_ipaddrs, json=payload)
         res.raise_for_status()

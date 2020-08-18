@@ -35,3 +35,4 @@ class URIs:
     managed_ipaddrs = "tables/addressing/managed-devs/"
     device_config_refs = "tables/management/configuration"
     download_device_config = "tables/management/configuration/download"
+    snapshots = "snapshots"
