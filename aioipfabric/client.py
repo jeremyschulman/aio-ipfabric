@@ -19,7 +19,6 @@
 # -----------------------------------------------------------------------------
 
 from .mixin_inventory import IPFInventoryMixin
-from .mixin_configs import IPFConfigsMixin
 
 # -----------------------------------------------------------------------------
 # Exports
@@ -35,7 +34,7 @@ __all__ = ["IPFabricClient"]
 # -----------------------------------------------------------------------------
 
 
-class IPFabricClient(IPFInventoryMixin, IPFConfigsMixin):
+class IPFabricClient(IPFInventoryMixin):
     """
     An instance IPFabricClient is used to interact with the IP Fabric
     system API via methods that abstract the underlying API calls.
@@ -44,6 +43,18 @@ class IPFabricClient(IPFInventoryMixin, IPFConfigsMixin):
     aspect of the IP Fabric product.  This composition structure allows the
     Developer to define a client with only those feature aspects that they need
     for their program.
+
+    To dynamically add a Mixin class, use the `mixin` method defined
+    by `IPFBaseClass`
+
+    Examples
+    --------
+        from aioipfabric import IPFabricClient
+        from aioipfabric.mixin_configs import IPFConfigMixin
+
+        ipf = IPFabricClient()
+        ipf.mixin(IPFConfigMixin)
+
     """
 
     pass

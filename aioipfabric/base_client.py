@@ -17,7 +17,7 @@
 # System Improts
 # -----------------------------------------------------------------------------
 
-from typing import Optional, AnyStr
+from typing import Optional, AnyStr, Iterable
 from os import environ, getenv
 
 # -----------------------------------------------------------------------------
@@ -102,3 +102,26 @@ class IPFBaseClient(object):
             username=username,
             password=password,
         )
+
+    def mixin(self, mixin_cls):
+        """
+        This method allows the Caller to dynamically add a Mixin class
+        to the existing IPF client instance.
+
+        Parameters
+        ----------
+        mixin_cls: subclass of IPFBaseClass
+            The mixin class whose methods will be added to the existing
+            IPF client instance (self).
+
+        References
+        ----------
+        https://stackoverflow.com/questions/8544983/dynamically-mixin-a-base-class-to-an-instance-in-python
+        """
+        self.__class__ = type(self.__class__.__name__, (self.__class__, mixin_cls), {})
+
+    def __repr__(self) -> Iterable[str]:
+        """ override the default repr to show the IPF system base URL """
+        cls_name = self.__class__.__name__
+        base_url = self.api.base_url
+        return f"{cls_name}: {base_url}"

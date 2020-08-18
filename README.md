@@ -20,7 +20,7 @@ pip install git+https://github.com/jeremyschulman/aio-ipfabric@master#egg=aio-ip
 ````python
 
 import asyncio
-from aioipfabric.client import IPFabricClient
+from aioipfabric import IPFabricClient
 
 loop = asyncio.get_event_loop()
 
