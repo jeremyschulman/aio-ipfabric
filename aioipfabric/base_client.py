@@ -14,17 +14,18 @@
 #
 
 # -----------------------------------------------------------------------------
-# System Improts
+# System Imports
 # -----------------------------------------------------------------------------
-
+import asyncio
 from typing import Optional, AnyStr, Iterable
 from os import environ, getenv
+from functools import cached_property
 
 # -----------------------------------------------------------------------------
-# Private Improts
+# Private Imports
 # -----------------------------------------------------------------------------
 
-from .consts import ENV, API_VER
+from .consts import ENV, API_VER, URIs
 from .api import IPFSession
 
 # -----------------------------------------------------------------------------
@@ -91,6 +92,9 @@ class IPFBaseClient(object):
         username = username or getenv(ENV.username)
         password = password or getenv(ENV.password)
 
+        # maintain the asyncio loop for methods that need to act synchronously.
+        self.loop = asyncio.get_event_loop()
+
         # ensure that the base_url ends with a slash since we will be using
         # httpx with base_url. there is a known _requirement_ for
         # ends-with-slash which if not in place causes issues.
@@ -100,6 +104,7 @@ class IPFBaseClient(object):
 
         self.api = IPFSession(
             base_url=base_url + API_VER,
+            loop=self.loop,
             token=token,
             username=username,
             password=password,
@@ -111,6 +116,22 @@ class IPFBaseClient(object):
 
         for mixin_cls in mixin_classes:
             self.mixin(mixin_cls)
+
+        # set the active snapshot to the most recent one using the special named
+        # snapshot value $last.
+
+        self.active_snapshot = "$last"
+
+    @cached_property
+    def snapshots(self) -> list:
+        """ cached list of snapshots.  Use `del ipf.snapshots` to invalidate the cache """
+        return self.loop.run_until_complete(self.fetch_snapshots())
+
+    async def fetch_snapshots(self) -> list:
+        """ coroutine to retrieve all known snapshots """
+        res = await self.api.get(URIs.snapshots)
+        res.raise_for_status()
+        return res.json()
 
     def mixin(self, mixin_cls):
         """

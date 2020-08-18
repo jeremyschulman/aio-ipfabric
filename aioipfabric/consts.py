@@ -13,11 +13,24 @@
 #  limitations under the License.
 #
 
+# -----------------------------------------------------------------------------
+# System Imports
+# -----------------------------------------------------------------------------
+
 from dataclasses import dataclass
+
+
+# -----------------------------------------------------------------------------
+#
+#                                    CODE BEGINS
+#
+# -----------------------------------------------------------------------------
 
 
 @dataclass
 class ENV:
+    """ identifies enviornment variables used """
+
     addr = "IPF_ADDR"
     username = "IPF_USERNAME"
     password = "IPF_PASSWORD"
@@ -29,9 +42,13 @@ API_VER = "api/v1/"
 
 @dataclass
 class URIs:
+    """ identifies API URL endpoings used"""
+
     login = "auth/login"
     token_refresh = "auth/token"
     devices = "tables/inventory/devices/"
+    device_parts = "tables/inventory/pn"
     managed_ipaddrs = "tables/addressing/managed-devs/"
     device_config_refs = "tables/management/configuration"
     download_device_config = "tables/management/configuration/download"
+    snapshots = "snapshots"

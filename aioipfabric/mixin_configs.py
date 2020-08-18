@@ -91,7 +91,7 @@ class IPFConfigsMixin(IPFBaseClient):
                     "hash",
                 ],
                 "filters": filters,
-                "snapshot": "$last",
+                "snapshot": self.active_snapshot,
                 "pagination": {"limit": 1, "start": 0},
                 "sort": {"column": "lastChange", "order": "desc"},
                 "reports": "/management/configuration/first",

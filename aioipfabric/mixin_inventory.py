@@ -13,11 +13,38 @@
 #  limitations under the License.
 #
 
+# -----------------------------------------------------------------------------
+# System Imports
+# -----------------------------------------------------------------------------
+
+from functools import cached_property
+
+# -----------------------------------------------------------------------------
+# Private Imports
+# -----------------------------------------------------------------------------
+
 from .base_client import IPFBaseClient
 from .consts import URIs
 
 
 class IPFInventoryMixin(IPFBaseClient):
+    """
+    IP Fabric client mixin supporting the inventory features.
+        - devices
+        - device optics
+        - device managed IP addresses
+    """
+
+    @cached_property
+    def devices(self):
+        """ cache of the existing inventory of devices """
+        return self.loop.run_until_complete(self.fetch_devices())["data"]
+
+    @cached_property
+    def device_optics(self):
+        """ cache of the existing inventory of device parts"""
+        return self.loop.run_until_complete(self.fetch_optics())["data"]
+
     async def fetch_devices(self) -> dict:
         """
         This coroutine is used to fetch all device inventory records.  The
@@ -38,7 +65,7 @@ class IPFInventoryMixin(IPFBaseClient):
                 "family",
                 "version",
             ],
-            "snapshot": "$last",
+            "snapshot": self.active_snapshot,
         }
 
         res = await self.api.post(URIs.devices, json=payload)
@@ -46,6 +73,7 @@ class IPFInventoryMixin(IPFBaseClient):
         return res.json()
 
     async def fetch_ipaddrs(self):
+        """ couroutine to retrieve all IP addresses used by all managed devices """
         payload = {
             "columns": [
                 "id",
@@ -57,8 +85,35 @@ class IPFInventoryMixin(IPFBaseClient):
                 "ip",
                 "net",
             ],
-            "snapshot": "$last",
+            "snapshot": self.active_snapshot,
         }
         res = await self.api.post(URIs.managed_ipaddrs, json=payload)
+        res.raise_for_status()
+        return res.json()
+
+    async def fetch_optics(self):
+        """ coroutine to retrieve all optic parts based on an intent verification rule """
+        optic_modules = {
+            "columns": [
+                "id",
+                "deviceSn",
+                "hostname",
+                "siteKey",
+                "siteName",
+                "deviceId",
+                "name",
+                "dscr",
+                "pid",
+                "sn",
+                "vid",
+                "vendor",
+                "platform",
+                "model",
+            ],
+            "filters": {"pid": ["color", "eq", "0"]},
+            "snapshot": self.active_snapshot,
+            "reports": "/inventory/part-numbers",
+        }
+        res = await self.api.post(URIs.device_parts, json=optic_modules)
         res.raise_for_status()
         return res.json()
