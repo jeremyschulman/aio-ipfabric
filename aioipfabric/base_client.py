@@ -114,8 +114,8 @@ class IPFBaseClient(object):
         # enables the caller to perform the mixin at runtime without having to
         # define a specific class.
 
-        for mixin_cls in mixin_classes:
-            self.mixin(mixin_cls)
+        if mixin_classes:
+            self.mixin(*mixin_classes)
 
         # set the active snapshot to the most recent one using the special named
         # snapshot value $last.
@@ -133,22 +133,22 @@ class IPFBaseClient(object):
         res.raise_for_status()
         return res.json()
 
-    def mixin(self, mixin_cls):
+    def mixin(self, *mixin_cls):
         """
         This method allows the Caller to dynamically add a Mixin class
         to the existing IPF client instance.
 
         Parameters
         ----------
-        mixin_cls: subclass of IPFBaseClass
-            The mixin class whose methods will be added to the existing
+        mixin_cls: subclasses of IPFBaseClass
+            The mixin classes whose methods will be added to the existing
             IPF client instance (self).
 
         References
         ----------
         https://stackoverflow.com/questions/8544983/dynamically-mixin-a-base-class-to-an-instance-in-python
         """
-        self.__class__ = type(self.__class__.__name__, (self.__class__, mixin_cls), {})
+        self.__class__ = type(self.__class__.__name__, (self.__class__, *mixin_cls), {})
 
     def __repr__(self) -> Iterable[str]:
         """ override the default repr to show the IPF system base URL """
