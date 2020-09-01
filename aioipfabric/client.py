@@ -63,8 +63,8 @@ class IPFabricClient(IPFInventoryMixin):
     def to_csv(
         datalist: List[Dict],
         filepath: AnyStr,
-        fieldnames: Optional[List[AnyStr]] = None,
-        exclude: Optional[List[AnyStr]] = None,
+        fieldnames: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
     ) -> None:
         """
         This method will store the given list of dict items to a CSV file.  The
