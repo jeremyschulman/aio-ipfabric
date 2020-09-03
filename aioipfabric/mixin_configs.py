@@ -13,10 +13,39 @@
 #  limitations under the License.
 #
 
-from typing import Optional
+# -----------------------------------------------------------------------------
+# System Imports
+# -----------------------------------------------------------------------------
 
+from typing import Optional
+from pathlib import Path
+
+# -----------------------------------------------------------------------------
+# Public Imports
+# -----------------------------------------------------------------------------
+
+import aiofiles
+
+# -----------------------------------------------------------------------------
+# Private Imports
+# -----------------------------------------------------------------------------
+
+from .aiofut import as_completed
 from .base_client import IPFBaseClient
 from .consts import URIs
+
+# -----------------------------------------------------------------------------
+# Exports
+# -----------------------------------------------------------------------------
+
+__all__ = ["IPFConfigsMixin"]
+
+
+# -----------------------------------------------------------------------------
+#
+#                                 CODE BEGINS
+#
+# -----------------------------------------------------------------------------
 
 
 class IPFConfigsMixin(IPFBaseClient):
@@ -119,3 +148,76 @@ class IPFConfigsMixin(IPFBaseClient):
             return res.text, body
 
         return res.text
+
+    async def download_all_device_configs(
+        self, dest_dir: str, sanitized: Optional[bool] = False,
+    ):
+        """
+        This coroutine is used to download the latest copy of all devices in the
+        active snapshot.
+
+        Parameters
+        ----------
+        dest_dir:
+            The filepath to an existing directory.  The configuration files
+            will be stored into this directory.
+
+        sanitized:
+            Determines if the configuration should be santized as it is extracted
+            from the IP Fabric system.
+        """
+
+        # The first step is to retrieve each of the configuration "hash" records
+        # using the active snapshot start timestamp as the basis for the filter.
+
+        dir_obj = Path(dest_dir)
+        if not dir_obj.is_dir():
+            raise RuntimeError(f"{dest_dir} is not a directory")
+
+        snap_rec = next(
+            rec for rec in self.snapshots if rec["id"] == self.active_snapshot
+        )
+
+        payload = {
+            "columns": [
+                "_id",
+                "sn",
+                "hostname",
+                "lastChange",
+                "lastCheck",
+                "status",
+                "hash",
+            ],
+            "filters": {"lastCheck": ["gte", snap_rec["tsStart"]]},
+            "snapshot": self.active_snapshot,
+            "sort": {"column": "lastChange", "order": "desc"},
+            "reports": "/management/configuration/first",
+        }
+
+        res = await self.api.post(URIs.device_config_refs, json=payload)
+        res.raise_for_status()
+        records = res.json()["data"]
+
+        # Now we need to retrieve each config file based on each record hash.  We will create
+        # a list of tasks for this process and run them all concurrently.
+
+        fetch_tasks = {
+            self.api.get(
+                URIs.download_device_config,
+                params={"hash": rec["hash"], "sanitized": sanitized},
+                timeout=60,
+            ): rec
+            for rec in records
+        }
+
+        print(f"Downloading {len(fetch_tasks)} device configurations ... ")
+        async for task in as_completed(fetch_tasks, timeout=5 * 60):
+            coro = task.get_coro()
+            rec = fetch_tasks[coro]
+
+            cfg_file = dir_obj.joinpath(rec["hostname"] + ".cfg")
+            print(cfg_file.name)
+
+            res = task.result()
+            async with aiofiles.open(cfg_file, "w+") as ofile:
+                await ofile.write(res.text)
