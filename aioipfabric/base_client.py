@@ -117,10 +117,8 @@ class IPFBaseClient(object):
         if mixin_classes:
             self.mixin(*mixin_classes)
 
-        # set the active snapshot to the most recent one using the special named
-        # snapshot value $last.
-
-        self.active_snapshot = "$last"
+        # set the active snapshot to the most recent one
+        self.active_snapshot = self.snapshots[0]["id"]
 
     @cached_property
     def snapshots(self) -> list:
@@ -128,7 +126,7 @@ class IPFBaseClient(object):
         return self.loop.run_until_complete(self.fetch_snapshots())
 
     async def fetch_snapshots(self) -> list:
-        """ coroutine to retrieve all known snapshots """
+        """ coroutine to retrieve all known snapshots, returns List[dict] records """
         res = await self.api.get(URIs.snapshots)
         res.raise_for_status()
         return res.json()

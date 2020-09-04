@@ -13,10 +13,39 @@
 #  limitations under the License.
 #
 
-from typing import Optional
+# -----------------------------------------------------------------------------
+# System Imports
+# -----------------------------------------------------------------------------
 
+from typing import Optional, Callable, Dict
+from asyncio import Semaphore
+
+# -----------------------------------------------------------------------------
+# Public Imports
+# -----------------------------------------------------------------------------
+
+import aiofiles
+
+# -----------------------------------------------------------------------------
+# Private Imports
+# -----------------------------------------------------------------------------
+
+from .aiofut import as_completed
 from .base_client import IPFBaseClient
 from .consts import URIs
+
+# -----------------------------------------------------------------------------
+# Exports
+# -----------------------------------------------------------------------------
+
+__all__ = ["IPFConfigsMixin"]
+
+
+# -----------------------------------------------------------------------------
+#
+#                                 CODE BEGINS
+#
+# -----------------------------------------------------------------------------
 
 
 class IPFConfigsMixin(IPFBaseClient):
@@ -119,3 +148,128 @@ class IPFConfigsMixin(IPFBaseClient):
             return res.text, body
 
         return res.text
+
+    async def download_all_device_configs(
+        self,
+        since_ts: int,
+        factory_filename: Callable[[Dict], str],
+        before_ts: Optional[int] = None,
+        sanitized: Optional[bool] = False,
+        batch_sz: Optional[int] = 1,
+    ):
+        """
+        This coroutine is used to download the latest copy of all devices in the
+        active snapshot.
+
+        Parameters
+        ----------
+        since_ts:
+            The timestamp criteria for retrieving configs such that lastChecked
+            is >= since_ts. This value is the epoch timestamp * 1_000; which is
+            the IP Fabric native storage unit for timestamps.
+
+        factory_filename:
+            A function that is used to generate the base device configuration
+            filename.  The function is given the device record dictionary that
+            contains the fields for host name ('hostname') and serial number
+            ('sn').
+
+        before_ts:
+            The timestamp criteria for retrieving configs such that lastChecked
+            is <= before_ts.  This value is the epoch timestamp * 1_000.
+
+        sanitized:
+            Determines if the configuration should be santized as it is extracted
+            from the IP Fabric system.
+
+        batch_sz:
+            Number of concurrent download tasks; used to rate-limit IPF API
+            due to potential performance related issue.
+
+        Notes
+        -----
+        From experiments with the IP Fabric API, observations are that batch_sz
+        must be 1 as higher values result in result text as combinations of
+        multiple devices.
+        """
+
+        # The first step is to retrieve each of the configuration "hash" records
+        # using the active snapshot start timestamp as the basis for the filter.
+
+        if before_ts:
+            # TODO: The attempt to use the 'and' with this API call causes an
+            #       Error 500 response code.  Leaving this code in for now so we
+            #       can debug/troubleshoot with IPF team.
+
+            if before_ts <= since_ts:
+                raise ValueError(f"before_ts {before_ts} <= since_ts {since_ts}")
+
+            filters = {
+                "and": [
+                    {"lastCheck": ["gte", since_ts]},
+                    {"lastCheck": ["lte", before_ts]},
+                ]
+            }
+        else:
+            filters = {"lastCheck": ["gte", since_ts]}
+
+        payload = {
+            "columns": [
+                "_id",
+                "sn",
+                "hostname",
+                "lastChange",
+                "lastCheck",
+                "status",
+                "hash",
+            ],
+            "filters": filters,
+            "snapshot": self.active_snapshot,
+            "sort": {"column": "lastChange", "order": "desc"},
+            "reports": "/management/configuration/first",
+        }
+
+        res = await self.api.post(URIs.device_config_refs, json=payload)
+        res.raise_for_status()
+        records = res.json()["data"]
+
+        # NOTE: For unknown reasons, there are devices that have more than one
+        # record in this response collection.  Therefore we need to retain only
+        # the most recent value using a dict and the setdefault method
+
+        filtered_records = dict()
+
+        for rec in records:
+            filtered_records.setdefault(rec["sn"], rec)
+
+        records = list(filtered_records.values())
+
+        # Now we need to retrieve each config file based on each record hash.
+        # We will create a list of tasks for this process and run them
+        # concurrently in batches (due to API related reasons).
+
+        batching_sem = Semaphore(batch_sz)
+
+        async def fetch_device_config(_hash):
+            """ perform a config fetch limited by semaphore """
+            async with batching_sem:
+                api_res = await self.api.get(
+                    URIs.download_device_config,
+                    params={"hash": _hash, "sanitized": sanitized},
+                    timeout=60,
+                )
+                return api_res
+
+        fetch_tasks = {fetch_device_config(rec["hash"]): rec for rec in records}
+
+        print(
+            f"Downloading {len(fetch_tasks)} device configurations in {batch_sz} batches ... "
+        )
+
+        async for task in as_completed(fetch_tasks, timeout=5 * 60):
+            coro = task.get_coro()
+            rec = fetch_tasks[coro]
+            t_result = task.result()
+
+            async with aiofiles.open(factory_filename(rec), "w+") as ofile:
+                await ofile.write(t_result.text)
