@@ -17,8 +17,7 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
-from typing import Optional
-from pathlib import Path
+from typing import Optional, Callable, Dict
 from asyncio import Semaphore
 
 # -----------------------------------------------------------------------------
@@ -152,8 +151,8 @@ class IPFConfigsMixin(IPFBaseClient):
 
     async def download_all_device_configs(
         self,
-        dest_dir: str,
         since_ts: int,
+        factory_filename: Callable[[Dict], str],
         before_ts: Optional[int] = None,
         sanitized: Optional[bool] = False,
         batch_sz: Optional[int] = 1,
@@ -164,14 +163,16 @@ class IPFConfigsMixin(IPFBaseClient):
 
         Parameters
         ----------
-        dest_dir:
-            The filepath to an existing directory.  The configuration files
-            will be stored into this directory.
-
         since_ts:
             The timestamp criteria for retrieving configs such that lastChecked
             is >= since_ts. This value is the epoch timestamp * 1_000; which is
             the IP Fabric native storage unit for timestamps.
+
+        factory_filename:
+            A function that is used to generate the base device configuration
+            filename.  The function is given the device record dictionary that
+            contains the fields for host name ('hostname') and serial number
+            ('sn').
 
         before_ts:
             The timestamp criteria for retrieving configs such that lastChecked
@@ -195,11 +196,11 @@ class IPFConfigsMixin(IPFBaseClient):
         # The first step is to retrieve each of the configuration "hash" records
         # using the active snapshot start timestamp as the basis for the filter.
 
-        dir_obj = Path(dest_dir)
-        if not dir_obj.is_dir():
-            raise RuntimeError(f"{dest_dir} is not a directory")
-
         if before_ts:
+            # TODO: The attempt to use the 'and' with this API call causes an
+            #       Error 500 response code.  Leaving this code in for now so we
+            #       can debug/troubleshoot with IPF team.
+
             if before_ts <= since_ts:
                 raise ValueError(f"before_ts {before_ts} <= since_ts {since_ts}")
 
@@ -250,6 +251,7 @@ class IPFConfigsMixin(IPFBaseClient):
         batching_sem = Semaphore(batch_sz)
 
         async def fetch_device_config(_hash):
+            """ perform a config fetch limited by semaphore """
             async with batching_sem:
                 api_res = await self.api.get(
                     URIs.download_device_config,
@@ -267,12 +269,7 @@ class IPFConfigsMixin(IPFBaseClient):
         async for task in as_completed(fetch_tasks, timeout=5 * 60):
             coro = task.get_coro()
             rec = fetch_tasks[coro]
+            t_result = task.result()
 
-            hostname = rec["hostname"].replace("/", "-")
-            cfg_file = dir_obj.joinpath(hostname + ".cfg")
-            print(cfg_file)
-
-            f_res = task.result()
-
-            async with aiofiles.open(cfg_file, "w+") as ofile:
-                await ofile.write(f_res.text)
+            async with aiofiles.open(factory_filename(rec), "w+") as ofile:
+                await ofile.write(t_result.text)

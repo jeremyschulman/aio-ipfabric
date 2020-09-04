@@ -77,6 +77,7 @@ async def as_completed(
     # builtin on_completed to yield the results.
 
     def wrap_coro(coro):
+        """ used so we can retrieved the original coro via task.get_coro() """
         fut = asyncio.ensure_future(coro)
         wrapper = loop.create_future()
         fut.add_done_callback(wrapper.set_result)
