@@ -19,6 +19,7 @@
 
 from typing import Optional
 from pathlib import Path
+from asyncio import Semaphore
 
 # -----------------------------------------------------------------------------
 # Public Imports
@@ -153,7 +154,7 @@ class IPFConfigsMixin(IPFBaseClient):
         self,
         dest_dir: str,
         sanitized: Optional[bool] = False,
-        batch_sz: Optional[int] = 50,
+        batch_sz: Optional[int] = 1,
     ):
         """
         This coroutine is used to download the latest copy of all devices in the
@@ -172,6 +173,12 @@ class IPFConfigsMixin(IPFBaseClient):
         batch_sz:
             Number of concurrent download tasks; used to rate-limit IPF API
             due to potential performance related issue.
+
+        Notes
+        -----
+        From experiments with the IP Fabric API, observations are that batch_sz
+        must be 1 as higher values result in result text as combinations of
+        multiple devices.
         """
 
         # The first step is to retrieve each of the configuration "hash" records
@@ -195,7 +202,7 @@ class IPFConfigsMixin(IPFBaseClient):
                 "status",
                 "hash",
             ],
-            "filters": {"lastCheck": ["gte", snap_rec["tsStart"]]},
+            "filters": {"lastCheck": ["gte", snap_rec["tsEnd"]]},
             "snapshot": self.active_snapshot,
             "sort": {"column": "lastChange", "order": "desc"},
             "reports": "/management/configuration/first",
@@ -205,36 +212,36 @@ class IPFConfigsMixin(IPFBaseClient):
         res.raise_for_status()
         records = res.json()["data"]
 
-        # Now we need to retrieve each config file based on each record hash.  We will create
-        # a list of tasks for this process and run them all concurrently.
+        # Now we need to retrieve each config file based on each record hash.
+        # We will create a list of tasks for this process and run them
+        # concurrently in batches (due to API related reasons).
 
-        fetch_tasks = {
-            self.api.get(
-                URIs.download_device_config,
-                params={"hash": rec["hash"], "sanitized": sanitized},
-                timeout=60,
-            ): rec
-            for rec in records
-        }
+        batching_sem = Semaphore(batch_sz)
+
+        async def fetch_device_config(_hash):
+            async with batching_sem:
+                api_res = await self.api.get(
+                    URIs.download_device_config,
+                    params={"hash": _hash, "sanitized": sanitized},
+                    timeout=60,
+                )
+                return api_res
+
+        fetch_tasks = {fetch_device_config(rec["hash"]): rec for rec in records}
 
         print(
             f"Downloading {len(fetch_tasks)} device configurations in {batch_sz} batches ... "
         )
 
-        async def fetch_batch(batch_tasks):
-            async for task in as_completed(batch_tasks, timeout=5 * 60):
-                coro = task.get_coro()
-                rec = fetch_tasks[coro]
+        async for task in as_completed(fetch_tasks, timeout=5 * 60):
+            coro = task.get_coro()
+            rec = fetch_tasks[coro]
 
-                hostname = rec["hostname"].replace("/", "-")
-                cfg_file = dir_obj.joinpath(hostname + ".cfg")
-                print(cfg_file)
+            hostname = rec["hostname"].replace("/", "-")
+            cfg_file = dir_obj.joinpath(hostname + ".cfg")
+            print(cfg_file)
 
-                f_res = task.result()
-                async with aiofiles.open(cfg_file, "w+") as ofile:
-                    await ofile.write(f_res.text)
+            f_res = task.result()
 
-        ft_list = list(fetch_tasks)
-
-        for r in range(0, len(ft_list), batch_sz):
-            await fetch_batch(ft_list[r : r + batch_sz])
+            async with aiofiles.open(cfg_file, "w+") as ofile:
+                await ofile.write(f_res.text)
