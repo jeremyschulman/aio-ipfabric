@@ -153,6 +153,8 @@ class IPFConfigsMixin(IPFBaseClient):
     async def download_all_device_configs(
         self,
         dest_dir: str,
+        since_ts: int,
+        before_ts: Optional[int] = None,
         sanitized: Optional[bool] = False,
         batch_sz: Optional[int] = 1,
     ):
@@ -165,6 +167,15 @@ class IPFConfigsMixin(IPFBaseClient):
         dest_dir:
             The filepath to an existing directory.  The configuration files
             will be stored into this directory.
+
+        since_ts:
+            The timestamp criteria for retrieving configs such that lastChecked
+            is >= since_ts. This value is the epoch timestamp * 1_000; which is
+            the IP Fabric native storage unit for timestamps.
+
+        before_ts:
+            The timestamp criteria for retrieving configs such that lastChecked
+            is <= before_ts.  This value is the epoch timestamp * 1_000.
 
         sanitized:
             Determines if the configuration should be santized as it is extracted
@@ -188,9 +199,18 @@ class IPFConfigsMixin(IPFBaseClient):
         if not dir_obj.is_dir():
             raise RuntimeError(f"{dest_dir} is not a directory")
 
-        snap_rec = next(
-            rec for rec in self.snapshots if rec["id"] == self.active_snapshot
-        )
+        if before_ts:
+            if before_ts <= since_ts:
+                raise ValueError(f"before_ts {before_ts} <= since_ts {since_ts}")
+
+            filters = {
+                "and": [
+                    {"lastCheck": ["gte", since_ts]},
+                    {"lastCheck": ["lte", before_ts]},
+                ]
+            }
+        else:
+            filters = {"lastCheck": ["gte", since_ts]}
 
         payload = {
             "columns": [
@@ -202,7 +222,7 @@ class IPFConfigsMixin(IPFBaseClient):
                 "status",
                 "hash",
             ],
-            "filters": {"lastCheck": ["gte", snap_rec["tsEnd"]]},
+            "filters": filters,
             "snapshot": self.active_snapshot,
             "sort": {"column": "lastChange", "order": "desc"},
             "reports": "/management/configuration/first",
@@ -211,6 +231,17 @@ class IPFConfigsMixin(IPFBaseClient):
         res = await self.api.post(URIs.device_config_refs, json=payload)
         res.raise_for_status()
         records = res.json()["data"]
+
+        # NOTE: For unknown reasons, there are devices that have more than one
+        # record in this response collection.  Therefore we need to retain only
+        # the most recent value using a dict and the setdefault method
+
+        filtered_records = dict()
+
+        for rec in records:
+            filtered_records.setdefault(rec["sn"], rec)
+
+        records = list(filtered_records.values())
 
         # Now we need to retrieve each config file based on each record hash.
         # We will create a list of tasks for this process and run them
