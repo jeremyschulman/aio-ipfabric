@@ -150,7 +150,10 @@ class IPFConfigsMixin(IPFBaseClient):
         return res.text
 
     async def download_all_device_configs(
-        self, dest_dir: str, sanitized: Optional[bool] = False,
+        self,
+        dest_dir: str,
+        sanitized: Optional[bool] = False,
+        batch_sz: Optional[int] = 50,
     ):
         """
         This coroutine is used to download the latest copy of all devices in the
@@ -165,6 +168,10 @@ class IPFConfigsMixin(IPFBaseClient):
         sanitized:
             Determines if the configuration should be santized as it is extracted
             from the IP Fabric system.
+
+        batch_sz:
+            Number of concurrent download tasks; used to rate-limit IPF API
+            due to potential performance related issue.
         """
 
         # The first step is to retrieve each of the configuration "hash" records
@@ -210,14 +217,24 @@ class IPFConfigsMixin(IPFBaseClient):
             for rec in records
         }
 
-        print(f"Downloading {len(fetch_tasks)} device configurations ... ")
-        async for task in as_completed(fetch_tasks, timeout=5 * 60):
-            coro = task.get_coro()
-            rec = fetch_tasks[coro]
+        print(
+            f"Downloading {len(fetch_tasks)} device configurations in {batch_sz} batches ... "
+        )
 
-            cfg_file = dir_obj.joinpath(rec["hostname"] + ".cfg")
-            print(cfg_file.name)
+        async def fetch_batch(batch_tasks):
+            async for task in as_completed(batch_tasks, timeout=5 * 60):
+                coro = task.get_coro()
+                rec = fetch_tasks[coro]
 
-            res = task.result()
-            async with aiofiles.open(cfg_file, "w+") as ofile:
-                await ofile.write(res.text)
+                hostname = rec["hostname"].replace("/", "-")
+                cfg_file = dir_obj.joinpath(hostname + ".cfg")
+                print(cfg_file)
+
+                f_res = task.result()
+                async with aiofiles.open(cfg_file, "w+") as ofile:
+                    await ofile.write(f_res.text)
+
+        ft_list = list(fetch_tasks)
+
+        for r in range(0, len(ft_list), batch_sz):
+            await fetch_batch(ft_list[r : r + batch_sz])
