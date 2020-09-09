@@ -20,12 +20,13 @@ import asyncio
 from typing import Optional, AnyStr, Iterable
 from os import environ, getenv
 from functools import cached_property
+from dataclasses import dataclass
 
 # -----------------------------------------------------------------------------
 # Private Imports
 # -----------------------------------------------------------------------------
 
-from .consts import ENV, API_VER, URIs
+from .consts import ENV, API_VER
 from .api import IPFSession
 
 # -----------------------------------------------------------------------------
@@ -40,6 +41,13 @@ __all__ = ["IPFBaseClient"]
 #                           CODE BEGINS
 #
 # -----------------------------------------------------------------------------
+
+
+@dataclass
+class URIs:
+    """ identifies API URL endpoings used"""
+
+    snapshots = "snapshots"
 
 
 class IPFBaseClient(object):

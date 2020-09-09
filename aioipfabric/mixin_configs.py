@@ -17,22 +17,18 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
-from typing import Optional, Callable, Dict
+from typing import Optional, Callable, Dict, Awaitable
 from asyncio import Semaphore
-
-# -----------------------------------------------------------------------------
-# Public Imports
-# -----------------------------------------------------------------------------
-
-import aiofiles
+from dataclasses import dataclass
+import logging
 
 # -----------------------------------------------------------------------------
 # Private Imports
 # -----------------------------------------------------------------------------
 
+import aioipfabric
 from .aiofut import as_completed
 from .base_client import IPFBaseClient
-from .consts import URIs
 
 # -----------------------------------------------------------------------------
 # Exports
@@ -47,119 +43,44 @@ __all__ = ["IPFConfigsMixin"]
 #
 # -----------------------------------------------------------------------------
 
+_LOG = logging.getLogger(aioipfabric.__package__)
+
+
+@dataclass
+class URIs:
+    """ API endpoints """
+
+    device_config_refs = "tables/management/configuration"
+    download_device_config = "tables/management/configuration/download"
+
 
 class IPFConfigsMixin(IPFBaseClient):
     """
     Mixin to support fetching device configurations (text)
     """
 
-    async def fetch_device_config(
+    async def fetch_device_configs(
         self,
-        hostname,
-        *domains,
-        exact_match: Optional[bool] = False,
-        sanitized=False,
-        with_body=False,
-    ):
-        """
-        This coroutine is used to return the most recent device
-        configuration (text) for the `hostname` provided.
-
-        Parameters
-        ----------
-        hostname: str
-            The device hostname to find.  By default the call to the API will
-            use the `like` filter so that you do not need to provide an exact
-            match. That said, be careful with the hostname value as it may
-            result in a config content response to the wrong hostname.  If you
-            want an exact match, set `exact_match` to True
-
-        exact_match: Optional[bool]
-            When True will invoke the API with the filter "eq" so that the
-            hostname value must be an exact match.
-
-        domains: Optional[List]
-            Any domain names that need to be used to find the hostname
-            within the inventory
-
-        sanitized: Optional[bool]
-            When True will use the IP Fabric sanitize feature to redanct
-            sensitive information from the configuration content.
-
-        with_body: Optional[bool]
-            When True will return the entire API response body.  By
-            default only the configuration content is returned.
-
-        Returns
-        -------
-        None:
-            When the `hostname` is not found in inventory
-
-        device configuration: str
-            When `with_body` is False (default)
-
-        API response body: dict
-            When `with_body` is True
-        """
-        # Find the device configuration record; we only want the most recent
-        # configuraiton.
-
-        find = (hostname, *(f"{hostname}.{domain}" for domain in domains))
-        match_op = "eq" if exact_match else "like"
-
-        for each in find:
-            filters = {"hostname": [match_op, each]}
-            payload = {
-                "columns": [
-                    "_id",
-                    "sn",
-                    "hostname",
-                    "lastChange",
-                    "lastCheck",
-                    "status",
-                    "hash",
-                ],
-                "filters": filters,
-                "snapshot": self.active_snapshot,
-                "pagination": {"limit": 1, "start": 0},
-                "sort": {"column": "lastChange", "order": "desc"},
-                "reports": "/management/configuration/first",
-            }
-
-            res = await self.api.post(URIs.device_config_refs, json=payload)
-            res.raise_for_status()
-            body = res.json()
-            if body["_meta"]["count"] != 0:
-                break
-
-        else:
-            # if no match found return None
-            return None
-
-        # obtain the actual configuration text
-
-        rec = body["data"][0]
-        file_hash = rec["hash"]
-        params = {"hash": file_hash, "sanitized": sanitized}
-        res = await self.api.get(URIs.download_device_config, params=params)
-        res.raise_for_status()
-
-        if with_body:
-            return res.text, body
-
-        return res.text
-
-    async def download_all_device_configs(
-        self,
+        callback: Callable[[Dict, str], Awaitable[None]],
         since_ts: int,
-        factory_filename: Callable[[Dict], str],
         before_ts: Optional[int] = None,
+        filters: Optional[Dict] = None,
         sanitized: Optional[bool] = False,
         batch_sz: Optional[int] = 1,
     ):
         """
-        This coroutine is used to download the latest copy of all devices in the
-        active snapshot.
+        This coroutine is used to download the latest copy of devices in the
+        active snapshot.  The default behavior is to locate the lastest device
+        configuration since the `since_ts` time for all devices.
+
+        If the Caller needs to "go back in time" then both the `since_ts` and
+        `before_ts` values should be used and only devices that match:
+
+                since_ts <= lastChange <= before_ts
+
+        If the Caller would like to further filter records based on 'hostname',
+        'sn' (serial-number), those filters can be provided in the `filters`
+        parameter.
 
         Parameters
         ----------
@@ -168,11 +89,18 @@ class IPFConfigsMixin(IPFBaseClient):
             is >= since_ts. This value is the epoch timestamp * 1_000; which is
             the IP Fabric native storage unit for timestamps.
 
-        factory_filename:
-            A function that is used to generate the base device configuration
-            filename.  The function is given the device record dictionary that
-            contains the fields for host name ('hostname') and serial number
-            ('sn').
+        callback:
+            A coroutine that will be invoked with the device record and
+            configuration file content that allows the Caller to do
+            something with the content such as save it to a file.
+
+        filters:
+            Any additional Caller provided API filters that should be applied in
+            addition to using the `since_ts` and `before_ts` options.  This
+            filters dictionary allows the caller to be more specific, for
+            example regex of hostnames.  The filters only apply to the fields to
+            extact the backup record hashs; which primarily include ['sn',
+            'hostname', 'status']
 
         before_ts:
             The timestamp criteria for retrieving configs such that lastChecked
@@ -188,9 +116,10 @@ class IPFConfigsMixin(IPFBaseClient):
 
         Notes
         -----
-        From experiments with the IP Fabric API, observations are that batch_sz
-        must be 1 as higher values result in result text as combinations of
-        multiple devices.
+        From experiments with the IP Fabric API, v3.6.1, observations are that
+        batch_sz must be 1 as higher values result in result text as
+        combinations of multiple devices. (Confirmed by IP Fabric engineering
+        2020-Sep-09)
         """
 
         # The first step is to retrieve each of the configuration "hash" records
@@ -204,14 +133,22 @@ class IPFConfigsMixin(IPFBaseClient):
             if before_ts <= since_ts:
                 raise ValueError(f"before_ts {before_ts} <= since_ts {since_ts}")
 
-            filters = {
-                "and": [
-                    {"lastCheck": ["gte", since_ts]},
-                    {"lastCheck": ["lte", before_ts]},
-                ]
-            }
+            filters_ = {"lastChange": ["gte", since_ts]}
+
+            # filters_ = {
+            #     "and": [
+            #         {"lastCheck": ["gte", since_ts]},
+            #         {"lastCheck": ["lte", before_ts]},
+            #     ]
+            # }
+
         else:
-            filters = {"lastCheck": ["gte", since_ts]}
+            filters_ = {"lastCheck": ["gte", since_ts]}
+
+        # if the Caller provided additional filters, add them now.
+
+        if filters:
+            filters_.update(filters)
 
         payload = {
             "columns": [
@@ -223,7 +160,7 @@ class IPFConfigsMixin(IPFBaseClient):
                 "status",
                 "hash",
             ],
-            "filters": filters,
+            "filters": filters_,
             "snapshot": self.active_snapshot,
             "sort": {"column": "lastChange", "order": "desc"},
             "reports": "/management/configuration/first",
@@ -244,9 +181,15 @@ class IPFConfigsMixin(IPFBaseClient):
 
         records = list(filtered_records.values())
 
-        # Now we need to retrieve each config file based on each record hash.
-        # We will create a list of tasks for this process and run them
-        # concurrently in batches (due to API related reasons).
+        # since we cannot use the API for before_ts, we need to perform a post
+        # API filtering process now
+
+        if before_ts:
+            records = [rec for rec in records if rec["lastChange"] <= before_ts]
+
+        # Now we need to retrieve each config file based on each record hash. We
+        # will create a list of tasks for this process and run them concurrently
+        # in batches (due to API related reasons).
 
         batching_sem = Semaphore(batch_sz)
 
@@ -262,8 +205,8 @@ class IPFConfigsMixin(IPFBaseClient):
 
         fetch_tasks = {fetch_device_config(rec["hash"]): rec for rec in records}
 
-        print(
-            f"Downloading {len(fetch_tasks)} device configurations in {batch_sz} batches ... "
+        _LOG.debug(
+            f"Fetching {len(fetch_tasks)} device configurations in {batch_sz} batches ... "
         )
 
         async for task in as_completed(fetch_tasks, timeout=5 * 60):
@@ -271,5 +214,4 @@ class IPFConfigsMixin(IPFBaseClient):
             rec = fetch_tasks[coro]
             t_result = task.result()
 
-            async with aiofiles.open(factory_filename(rec), "w+") as ofile:
-                await ofile.write(t_result.text)
+            await callback(rec, t_result.text)
