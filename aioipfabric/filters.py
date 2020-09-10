@@ -19,7 +19,10 @@ Grouped Expressions:
         "or (site = atl, hostname has sw2)"
 
 Nested Group Expressions:
-    "or (and(site = atl, hostname has sw2), and(site = chc, hostname =~ '.*rs2[12]'))"
+    or (
+        and(site = atl, hostname has 'core'),
+        and(site = chc, hostname =~ '.*club-switch2[12]')
+    )
 
 
 References
@@ -124,8 +127,6 @@ simple_expr         = col_name ws oper ws cmp_value_tok
 col_name        = ~"[a-z0-9]+"i
 sq_words        = ~"[^']+"
 dq_words        = ~"[^\"]+"
-lpar            = "("
-rpar            = ")"
 ws              = ~"\s*"
 sq              = "'"
 dq              = "\""
@@ -203,5 +204,5 @@ nv = _GrammerParser()
 
 
 def parse_filter(expr):
-    res = grammer.parse(expr)
-    return nv.visit(res)
+    res = grammer.parse(expr.strip().replace("\n", ""))
+    return nv.visit(res)[0]
