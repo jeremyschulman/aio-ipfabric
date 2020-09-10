@@ -86,6 +86,11 @@ from itertools import chain
 from parsimonious import Grammar, NodeVisitor
 from parsimonious.nodes import RegexNode
 
+# -----------------------------------------------------------------------------
+# Exports
+# -----------------------------------------------------------------------------
+
+__all__ = ["parse_filter"]
 
 # -----------------------------------------------------------------------------
 #
@@ -101,8 +106,8 @@ _OPERATORS = MappingProxyType(
         "!has": "notlike",
         "=~": "reg",
         "!=~": "nreg",
-        "?": "empty",
-        "/": "cidr",
+        "empty": "empty",
+        "net": "cidr",
         "<": "le",
         "<=": "lte",
         ">": "gt",
@@ -130,19 +135,18 @@ dq_words        = ~"[^\"]+"
 ws              = ~"\s*"
 sq              = "'"
 dq              = "\""
-number          = ~"\d+"
-word            = ~"[-\w]+"
+word            = ~r"[\S]+"
 group_tok       = 'and' / 'or'
-oper            = '!=~' / '=~' / '!=' / '!has' / '<=' / '>=' / '=' / 'has' / '?' / '/' / '<' / '>'
-cmp_value_tok   = number / word / sq_tok / dq_tok
+oper            = '!=~' / '=~' / '!=' / 'net' / '!has' / '<=' / '>=' / '=' / 'has' / 'empty'  / '<' / '>'
+cmp_value_tok   = word / sq_tok / dq_tok
 sq_tok          = sq sq_words sq
 dq_tok          = dq dq_words dq
 """
 
-grammer = Grammar(FILTER_GRAMMER)
+_grammer = Grammar(FILTER_GRAMMER)
 
 
-class _GrammerParser(NodeVisitor):
+class _FilterConstructor(NodeVisitor):
     def visit_group_expr(self, node, vc):  # noqa
         group_tok, _, _, _, filter_list, *_ = vc
         return {group_tok: filter_list}
@@ -169,6 +173,11 @@ class _GrammerParser(NodeVisitor):
     def visit_simple_expr(self, node, vc):  # noqa
         """ return a filter dictionary """
         (col, _, oper, _, val,) = vc
+
+        if oper == "empty":
+            if (val := {"true": True, "false": False}.get(val.lower())) is None:
+                raise RuntimeError("'empty' value must be either 'true' or 'false'")
+
         return {col: [oper, val]}
 
     def visit_oper(self, node, vc):  # noqa
@@ -181,11 +190,12 @@ class _GrammerParser(NodeVisitor):
         """ children will either be a single node-value or a quoted-value """
         vc = vc.pop(0)
 
-        if isinstance(vc, (int, str)):
-            return vc
-
         if isinstance(vc, RegexNode):
-            return vc.text
+            # return as number if int-able
+            try:
+                return int(vc.text)
+            except ValueError:
+                return vc.text
 
         value_node = vc[0] if len(vc) == 1 else vc[1]
         return value_node.text
@@ -200,9 +210,9 @@ class _GrammerParser(NodeVisitor):
         return visited_children or node
 
 
-nv = _GrammerParser()
+_filter_builder = _FilterConstructor()
 
 
 def parse_filter(expr):
-    res = grammer.parse(expr.strip().replace("\n", ""))
-    return nv.visit(res)[0]
+    res = _grammer.parse(expr.strip().replace("\n", ""))
+    return _filter_builder.visit(res)[0]
