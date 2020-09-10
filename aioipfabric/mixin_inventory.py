@@ -17,6 +17,7 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
+from dataclasses import dataclass
 from functools import cached_property
 
 # -----------------------------------------------------------------------------
@@ -24,7 +25,23 @@ from functools import cached_property
 # -----------------------------------------------------------------------------
 
 from .base_client import IPFBaseClient
-from .consts import URIs
+
+
+# -----------------------------------------------------------------------------
+#
+#                                 CODE BEGINS
+#
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class URIs:
+    """ identifies API URL endpoings used"""
+
+    devices = "tables/inventory/devices/"
+    device_parts = "tables/inventory/pn"
+    managed_ipaddrs = "tables/addressing/managed-devs/"
+    snapshots = "snapshots"
 
 
 class IPFInventoryMixin(IPFBaseClient):

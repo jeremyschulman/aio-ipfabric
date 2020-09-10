@@ -38,17 +38,3 @@ class ENV:
 
 
 API_VER = "api/v1/"
-
-
-@dataclass
-class URIs:
-    """ identifies API URL endpoings used"""
-
-    login = "auth/login"
-    token_refresh = "auth/token"
-    devices = "tables/inventory/devices/"
-    device_parts = "tables/inventory/pn"
-    managed_ipaddrs = "tables/addressing/managed-devs/"
-    device_config_refs = "tables/management/configuration"
-    download_device_config = "tables/management/configuration/download"
-    snapshots = "snapshots"
