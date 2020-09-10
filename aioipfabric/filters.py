@@ -13,10 +13,10 @@ Simple Expressions:
 
 Grouped Expressions:
     Both site is equal to 'atl' and hostname contains 'sw2'
-        "and (site = atl, hostname has sw2, vendor = cisco)"
+    and (site = atl, hostname has sw2, vendor = cisco)
 
     Either site is euqal to 'atl' or hostname contains 'sw2'
-        "or (site = atl, hostname has sw2)"
+    or (site = atl, hostname has sw2)"
 
 Nested Group Expressions:
     or (
@@ -125,7 +125,9 @@ group_expr_list     = group_expr ws ("," ws group_expr)+
 group_expr          = group_tok ws "(" ws expr_list ws ")"
 expr_list           = simple_expr_list / group_expr_list
 simple_expr_list    = simple_expr ws ("," ws simple_expr)+
-simple_expr         = col_name ws oper ws cmp_value_tok
+simple_expr         = col_name ws (column_expr_rhs / oper_expr_rhs)
+oper_expr_rhs       = oper ws cmp_value_tok
+column_expr_rhs     = "column" ws oper ws col_name
 #
 # Token parts
 #
@@ -135,10 +137,10 @@ dq_words        = ~"[^\"]+"
 ws              = ~"\s*"
 sq              = "'"
 dq              = "\""
-word            = ~r"[\S]+"
+word            = ~r"[a-z0-9\.\/]+"
 group_tok       = 'and' / 'or'
 oper            = '!=~' / '=~' / '!=' / 'net' / '!has' / '<=' / '>=' / '=' / 'has' / 'empty'  / '<' / '>'
-cmp_value_tok   = word / sq_tok / dq_tok
+cmp_value_tok   = sq_tok / dq_tok / word
 sq_tok          = sq sq_words sq
 dq_tok          = dq dq_words dq
 """
@@ -172,13 +174,23 @@ class _FilterConstructor(NodeVisitor):
 
     def visit_simple_expr(self, node, vc):  # noqa
         """ return a filter dictionary """
-        (col, _, oper, _, val,) = vc
+        col, rhs = vc[0], vc[2][0]
 
-        if oper == "empty":
+        if rhs[0] == "empty":
+            val = rhs[1]
             if (val := {"true": True, "false": False}.get(val.lower())) is None:
                 raise RuntimeError("'empty' value must be either 'true' or 'false'")
+            rhs[1] = val
 
-        return {col: [oper, val]}
+        return {col: rhs}
+
+    def visit_oper_expr_rhs(self, node, vc):  # noqa
+        oper, _, value_tok = vc
+        return [oper, value_tok]
+
+    def visit_column_expr_rhs(self, node, vc):  # noqa
+        col_oper, _, oper, _, col_name = vc
+        return [col_oper.text, oper, col_name]
 
     def visit_oper(self, node, vc):  # noqa
         return _OPERATORS[node.text]
