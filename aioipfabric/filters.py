@@ -16,7 +16,7 @@ Grouped Expressions:
     and (site = atl, hostname has sw2, vendor = cisco)
 
     Either site is euqal to 'atl' or hostname contains 'sw2'
-    or (site = atl, hostname has sw2)"
+    or (site = atl, hostname has sw2)
 
 Nested Group Expressions:
     or (
