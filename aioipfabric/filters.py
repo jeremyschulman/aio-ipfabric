@@ -19,7 +19,7 @@ Grouped Expressions:
         "or (site = atl, hostname has sw2)"
 
 Nested Group Expressions:
-        "or (and(site = atl, hostname has sw2), and(site = chc, hostname =~ '.*rs2[12]'"
+    "or (and(site = atl, hostname has sw2), and(site = chc, hostname =~ '.*rs2[12]'))"
 
 
 References
@@ -109,10 +109,18 @@ _OPERATORS = MappingProxyType(
 
 
 FILTER_GRAMMER = r"""
+#
+# Expression parts
+#
 filter_expr         = group_expr / simple_expr
-group_expr          = group_tok ws "(" ws simple_expr_list ws ")"
+group_expr_list     = group_expr ws ("," ws group_expr)+
+group_expr          = group_tok ws "(" ws expr_list ws ")"
+expr_list           = simple_expr_list / group_expr_list
 simple_expr_list    = simple_expr ws ("," ws simple_expr)+
-simple_expr     = col_name ws oper ws cmp_value_tok
+simple_expr         = col_name ws oper ws cmp_value_tok
+#
+# Token parts
+#
 col_name        = ~"[a-z0-9]+"i
 sq_words        = ~"[^']+"
 dq_words        = ~"[^\"]+"
@@ -134,11 +142,22 @@ grammer = Grammar(FILTER_GRAMMER)
 
 
 class _GrammerParser(NodeVisitor):
-    def visit_group_expr(self, node, vc):
+    def visit_group_expr(self, node, vc):  # noqa
         group_tok, _, _, _, filter_list, *_ = vc
         return {group_tok: filter_list}
 
-    def visit_simple_expr_list(self, node, vc):
+    def visit_group_expr_list(self, node, vc):  # noqa
+        expr_1, _, expr_n = vc
+        expr_list = [
+            expr_1,
+            *(expr for expr in chain.from_iterable(expr_n) if isinstance(expr, dict)),
+        ]
+        return expr_list
+
+    def visit_expr_list(self, node, vc):  # noqa
+        return vc[0]
+
+    def visit_simple_expr_list(self, node, vc):  # noqa
         """ return a list of filter dictionaries """
         expr_1, _, expr_n = vc
         return [
@@ -146,18 +165,18 @@ class _GrammerParser(NodeVisitor):
             *(expr for expr in chain.from_iterable(expr_n) if isinstance(expr, dict)),
         ]
 
-    def visit_simple_expr(self, node, vc):
+    def visit_simple_expr(self, node, vc):  # noqa
         """ return a filter dictionary """
         (col, _, oper, _, val,) = vc
         return {col: [oper, val]}
 
-    def visit_oper(self, node, vc):
+    def visit_oper(self, node, vc):  # noqa
         return _OPERATORS[node.text]
 
-    def visit_group_tok(self, node, vc):
+    def visit_group_tok(self, node, vc):  # noqa
         return node.text
 
-    def visit_cmp_value_tok(self, node, vc):
+    def visit_cmp_value_tok(self, node, vc):  # noqa
         """ children will either be a single node-value or a quoted-value """
         vc = vc.pop(0)
 
@@ -170,10 +189,10 @@ class _GrammerParser(NodeVisitor):
         value_node = vc[0] if len(vc) == 1 else vc[1]
         return value_node.text
 
-    def visit_number(self, node, vc):
+    def visit_number(self, node, vc):  # noqa
         return int(node.text)
 
-    def visit_col_name(self, node, vc):
+    def visit_col_name(self, node, vc):  # noqa
         return node.text
 
     def generic_visit(self, node, visited_children):
