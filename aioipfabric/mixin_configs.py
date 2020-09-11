@@ -61,8 +61,9 @@ class IPFConfigsMixin(IPFBaseClient):
 
     async def fetch_device_configs(
         self,
-        callback: Callable[[Dict, str], Awaitable[None]],
+        on_config: Callable[[Dict, str], Awaitable[None]],
         since_ts: int,
+        since_changed: Optional[bool] = True,
         before_ts: Optional[int] = None,
         filters: Optional[Dict] = None,
         sanitized: Optional[bool] = False,
@@ -89,7 +90,12 @@ class IPFConfigsMixin(IPFBaseClient):
             is >= since_ts. This value is the epoch timestamp * 1_000; which is
             the IP Fabric native storage unit for timestamps.
 
-        callback:
+        since_changed
+            When True (default) this coroutine will fetech only those configurations
+            that have _changed_.  Use since_changed=False when you want to
+            fetch the configs regardless if they have changed or not.
+
+        on_config:
             A coroutine that will be invoked with the device record and
             configuration file content that allows the Caller to do
             something with the content such as save it to a file.
@@ -122,6 +128,8 @@ class IPFConfigsMixin(IPFBaseClient):
         2020-Sep-09)
         """
 
+        since_criteria = "lastChange" if since_changed else "lastCheck"
+
         # The first step is to retrieve each of the configuration "hash" records
         # using the active snapshot start timestamp as the basis for the filter.
 
@@ -133,7 +141,7 @@ class IPFConfigsMixin(IPFBaseClient):
             if before_ts <= since_ts:
                 raise ValueError(f"before_ts {before_ts} <= since_ts {since_ts}")
 
-            filters_ = {"lastChange": ["gte", since_ts]}
+            filters_ = {since_criteria: ["gte", since_ts]}
 
             # filters_ = {
             #     "and": [
@@ -143,7 +151,7 @@ class IPFConfigsMixin(IPFBaseClient):
             # }
 
         else:
-            filters_ = {"lastCheck": ["gte", since_ts]}
+            filters_ = {since_criteria: ["gte", since_ts]}
 
         # if the Caller provided additional filters, add them now.
 
@@ -162,7 +170,7 @@ class IPFConfigsMixin(IPFBaseClient):
             ],
             "filters": filters_,
             "snapshot": self.active_snapshot,
-            "sort": {"column": "lastChange", "order": "desc"},
+            "sort": {"column": since_criteria, "order": "desc"},
             "reports": "/management/configuration/first",
         }
 
@@ -181,12 +189,14 @@ class IPFConfigsMixin(IPFBaseClient):
 
         records = list(filtered_records.values())
 
+        # TODO NOTE: API workaournd for v3.6
         # since we cannot use the API for before_ts, we need to perform a post
         # API filtering process now
 
         if before_ts:
-            records = [rec for rec in records if rec["lastChange"] <= before_ts]
+            records = [rec for rec in records if rec[since_criteria] <= before_ts]
 
+        # TODO NOTE: API limitation
         # Now we need to retrieve each config file based on each record hash. We
         # will create a list of tasks for this process and run them concurrently
         # in batches (due to API related reasons).
@@ -203,6 +213,11 @@ class IPFConfigsMixin(IPFBaseClient):
                 )
                 return api_res
 
+        # create a lookup dictionary that will map the fetch coroutine to the
+        # hash record so that when the coroutine completes we can obtain the
+        # source device record; this is needed per the use of the `as_completed`
+        # function.
+
         fetch_tasks = {fetch_device_config(rec["hash"]): rec for rec in records}
 
         _LOG.debug(
@@ -210,8 +225,15 @@ class IPFConfigsMixin(IPFBaseClient):
         )
 
         async for task in as_completed(fetch_tasks, timeout=5 * 60):
-            coro = task.get_coro()
-            rec = fetch_tasks[coro]
+            # the `task` instance will provide both the config text as a result,
+            # and allow use to use the associated coroutine as a lookup so we
+            # can obtain the device record associated with the config.
+
+            rec = fetch_tasks[task.get_coro()]
             t_result = task.result()
 
-            await callback(rec, t_result.text)
+            # pass the device record and device configuration back to the Caller
+            # via the callback coroutine so that they can do what they want; for
+            # example save the contents to filesystem.
+
+            await on_config(rec, t_result.text)
