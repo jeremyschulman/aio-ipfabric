@@ -17,7 +17,7 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
-from typing import Optional, Callable, Dict, Awaitable
+from typing import Optional, Callable, Dict, Awaitable, List
 from asyncio import Semaphore
 from dataclasses import dataclass
 import logging
@@ -63,12 +63,14 @@ class IPFConfigsMixin(IPFBaseClient):
         self,
         on_config: Callable[[Dict, str], Awaitable[None]],
         since_ts: int,
-        since_changed: Optional[bool] = True,
+        all_configs: Optional[bool] = False,
         before_ts: Optional[int] = None,
         filters: Optional[Dict] = None,
+        device_filter: Optional[Callable[[Dict], bool]] = None,
         sanitized: Optional[bool] = False,
         batch_sz: Optional[int] = 1,
-    ):
+        dry_run: Optional[bool] = False,
+    ) -> List[Dict]:
         """
         This coroutine is used to download the latest copy of devices in the
         active snapshot.  The default behavior is to locate the lastest device
@@ -90,10 +92,10 @@ class IPFConfigsMixin(IPFBaseClient):
             is >= since_ts. This value is the epoch timestamp * 1_000; which is
             the IP Fabric native storage unit for timestamps.
 
-        since_changed
-            When True (default) this coroutine will fetech only those configurations
-            that have _changed_.  Use since_changed=False when you want to
-            fetch the configs regardless if they have changed or not.
+        all_configs:
+            When False (default) this coroutine will fetech only those
+            configurations that have _changed_.  Use all_configs=True when you
+            want to fetch the configs regardless if they have changed or not.
 
         on_config:
             A coroutine that will be invoked with the device record and
@@ -108,6 +110,13 @@ class IPFConfigsMixin(IPFBaseClient):
             extact the backup record hashs; which primarily include ['sn',
             'hostname', 'status']
 
+        device_filter:
+            The Caller can optionally provide a function used to filter if the
+            provided device-hash record should be used or not to retrieve the
+            device configuration.  This parameter is useful for cases where the
+            Caller wants to limit the device configuration retrival based on
+            filtering beyond the get-hash filter fields of sn and hostname.
+
         before_ts:
             The timestamp criteria for retrieving configs such that lastChecked
             is <= before_ts.  This value is the epoch timestamp * 1_000.
@@ -120,6 +129,16 @@ class IPFConfigsMixin(IPFBaseClient):
             Number of concurrent download tasks; used to rate-limit IPF API
             due to potential performance related issue.
 
+        dry_run:
+            When True this coroutine will return the list of devices
+            that would be used to retrieve the configuration files; but
+            not actually get the configs.
+
+        Returns
+        -------
+        List of device-hash records that were used to perform the config file
+        fetching process.
+
         Notes
         -----
         From experiments with the IP Fabric API, v3.6.1, observations are that
@@ -128,7 +147,7 @@ class IPFConfigsMixin(IPFBaseClient):
         2020-Sep-09)
         """
 
-        since_criteria = "lastChange" if since_changed else "lastCheck"
+        since_criteria = "lastCheck" if all_configs else "lastChange"
 
         # The first step is to retrieve each of the configuration "hash" records
         # using the active snapshot start timestamp as the basis for the filter.
@@ -182,6 +201,9 @@ class IPFConfigsMixin(IPFBaseClient):
         # record in this response collection.  Therefore we need to retain only
         # the most recent value using a dict and the setdefault method
 
+        if before_ts:
+            records = [rec for rec in records if rec[since_criteria] <= before_ts]
+
         filtered_records = dict()
 
         for rec in records:
@@ -189,12 +211,12 @@ class IPFConfigsMixin(IPFBaseClient):
 
         records = list(filtered_records.values())
 
+        if dry_run is True:
+            return records
+
         # TODO NOTE: API workaournd for v3.6
         # since we cannot use the API for before_ts, we need to perform a post
         # API filtering process now
-
-        if before_ts:
-            records = [rec for rec in records if rec[since_criteria] <= before_ts]
 
         # TODO NOTE: API limitation
         # Now we need to retrieve each config file based on each record hash. We
@@ -218,7 +240,13 @@ class IPFConfigsMixin(IPFBaseClient):
         # source device record; this is needed per the use of the `as_completed`
         # function.
 
-        fetch_tasks = {fetch_device_config(rec["hash"]): rec for rec in records}
+        device_filter = device_filter or (lambda x: True)
+
+        fetch_tasks = {
+            fetch_device_config(rec["hash"]): rec
+            for rec in records
+            if device_filter(rec)
+        }
 
         _LOG.debug(
             f"Fetching {len(fetch_tasks)} device configurations in {batch_sz} batches ... "
@@ -237,3 +265,5 @@ class IPFConfigsMixin(IPFBaseClient):
             # example save the contents to filesystem.
 
             await on_config(rec, t_result.text)
+
+        return records

@@ -17,8 +17,8 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
+from typing import Optional, Dict, List
 from dataclasses import dataclass
-from functools import cached_property
 
 # -----------------------------------------------------------------------------
 # Private Imports
@@ -52,23 +52,35 @@ class IPFInventoryMixin(IPFBaseClient):
         - device managed IP addresses
     """
 
-    @cached_property
-    def devices(self):
-        """ cache of the existing inventory of devices """
-        return self.loop.run_until_complete(self.fetch_devices())["data"]
-
-    @cached_property
-    def device_optics(self):
-        """ cache of the existing inventory of device parts"""
-        return self.loop.run_until_complete(self.fetch_optics())["data"]
-
-    async def fetch_devices(self) -> dict:
+    async def fetch_devices(
+        self,
+        columns: Optional[List[str]] = None,
+        filters: Optional[Dict] = None,
+        raw=False,
+    ) -> dict:
         """
         This coroutine is used to fetch all device inventory records.  The
         complete API response body is returned, including the _meta data.
+
+        Parameters
+        ----------
+        columns:
+            Optional list of table columns to retrieve.  If not provided, then
+            all of the table columns are retrieved.
+
+        filters:
+            Optional dictionary definiting API filters structure to limit the
+            devices retrieved from inventory.
+
+        raw:
+            When True the API payload is returned that includes both the _meta and the
+            data keys.
+
+            When False (default) only the API data list is returned.
         """
         payload = {
-            "columns": [
+            "columns": columns
+            or [
                 "id",
                 "sn",
                 "hostname",
@@ -81,15 +93,20 @@ class IPFInventoryMixin(IPFBaseClient):
                 "platform",
                 "family",
                 "version",
+                "model",
             ],
             "snapshot": self.active_snapshot,
         }
 
+        if filters:
+            payload["filters"] = filters
+
         res = await self.api.post(URIs.devices, json=payload)
         res.raise_for_status()
-        return res.json()
+        body = res.json()
+        return body if raw else body["data"]
 
-    async def fetch_ipaddrs(self):
+    async def fetch_ipaddrs(self, raw=False):
         """ couroutine to retrieve all IP addresses used by all managed devices """
         payload = {
             "columns": [
@@ -106,9 +123,10 @@ class IPFInventoryMixin(IPFBaseClient):
         }
         res = await self.api.post(URIs.managed_ipaddrs, json=payload)
         res.raise_for_status()
-        return res.json()
+        body = res.json()
+        return body if raw else body["data"]
 
-    async def fetch_optics(self):
+    async def fetch_optics(self, raw=False):
         """ coroutine to retrieve all optic parts based on an intent verification rule """
         optic_modules = {
             "columns": [
@@ -133,4 +151,5 @@ class IPFInventoryMixin(IPFBaseClient):
         }
         res = await self.api.post(URIs.device_parts, json=optic_modules)
         res.raise_for_status()
-        return res.json()
+        body = res.json()
+        return body if raw else body["data"]
