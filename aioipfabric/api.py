@@ -58,7 +58,7 @@ class IPFSession(AsyncClient):
     turns makes the api accessbile to any IPFabricClient instances.
     """
 
-    def __init__(self, base_url, loop, token=None, username=None, password=None):
+    def __init__(self, base_url, token=None, username=None, password=None):
         """
         Initialize the asyncio client session to the IP Fabric API
 
@@ -66,9 +66,6 @@ class IPFSession(AsyncClient):
         ----------
         base_url: str
             The base URL of the IP fabric system
-
-        loop:
-            The asyncio loop associated with this client.
 
         token: str
             The refresh token
@@ -84,19 +81,19 @@ class IPFSession(AsyncClient):
         self.__refresh_token = token
         self.__access_token = None
 
-        async def init_login():
-            """ obtain the initial access token """
-            if all((username, password)):
-                await self.__login(username=username, password=password)
-            elif token:
-                await self.__refresh_access_token(token)
-            else:
-                raise RuntimeError("MISSING required token or (username, password)")
+        if all((username, password)):
+            self.__init_auth = self.__auth_userpass(
+                username=username, password=password
+            )
+        elif token:
+            self.__init_auth = self.__refresh_access_token(token)
+        else:
+            raise RuntimeError("MISSING required token or (username, password)")
 
         self.headers["Content-Type"] = "application/json"
 
-        loop.run_until_complete(init_login())
-        self.headers["Authorization"] = f"Bearer {self.__access_token}"
+    async def authenticate(self):
+        await self.__init_auth
 
     @property
     def token(self):
@@ -120,7 +117,7 @@ class IPFSession(AsyncClient):
         body = res.json()
         self.__access_token = body["accessToken"]
 
-    async def __login(self, username, password):
+    async def __auth_userpass(self, username, password):
         """ underlying API to call to authenticate using login credentials """
         res = await self.post(
             URIs.login, json={"username": username, "password": password}
@@ -129,3 +126,4 @@ class IPFSession(AsyncClient):
         body = res.json()
         self.__access_token = body["accessToken"]
         self.__refresh_token = body["refreshToken"]
+        self.headers["Authorization"] = f"Bearer {self.__access_token}"
