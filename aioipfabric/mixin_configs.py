@@ -266,4 +266,7 @@ class IPFConfigsMixin(IPFBaseClient):
 
             await on_config(rec, t_result.text)
 
-        return records
+        # return only the list of device records that were subject to backup
+        # processing.
+
+        return list(fetch_tasks.values())
