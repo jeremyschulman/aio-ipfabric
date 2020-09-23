@@ -136,6 +136,11 @@ class IPFBaseClient(object):
         self.active_snapshot = None
 
     async def login(self):
+        """
+        Coroutine to perform the initial login authentication process, retrieve the list
+        of current snapshots, and set the `active_snapshot` attribute to the latest
+        snapshot.
+        """
         await self.api.authenticate()
         await self.fetch_snapshots()
 

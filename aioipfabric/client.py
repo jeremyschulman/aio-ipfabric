@@ -21,6 +21,7 @@ import csv
 # -----------------------------------------------------------------------------
 
 from .mixin_inventory import IPFInventoryMixin
+from .filters import parse_filter
 
 # -----------------------------------------------------------------------------
 # Exports
@@ -102,3 +103,5 @@ class IPFabricClient(IPFInventoryMixin):
             csv_wr = csv.DictWriter(ofile, fieldnames=fieldnames)
             csv_wr.writeheader()
             csv_wr.writerows(datalist)
+
+    parse_filter = staticmethod(parse_filter)
