@@ -93,7 +93,16 @@ class IPFSession(AsyncClient):
         self.headers["Content-Type"] = "application/json"
 
     async def authenticate(self):
-        await self.__init_auth
+        """
+        This coroutine is used to authenticate to the IPF server and obtain an access
+        token.  This coroutine can be used for both the initial login process as well
+        as the token refresh process.
+        """
+        try:
+            await self.__init_auth
+        except RuntimeError:
+            # A runtime error will occur if the __init_auth has already been awaited.
+            await self.refresh_token()
 
     @property
     def token(self):

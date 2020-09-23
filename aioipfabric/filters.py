@@ -164,11 +164,15 @@ _grammer = Grammar(FILTER_GRAMMER)
 
 
 class _FilterConstructor(NodeVisitor):
+    """ parsimouneous node visitor for handlingn the FILTER_GRAMMER """
+
     def visit_group_expr(self, node, vc):  # noqa
+        """ create a group_expr item """
         group_tok, _, _, _, filter_list, *_ = vc
         return {group_tok: filter_list}
 
     def visit_group_expr_list(self, node, vc):  # noqa
+        """ create a list of group_expr items """
         expr_1, _, expr_n = vc
         expr_list = [
             expr_1,
@@ -177,6 +181,7 @@ class _FilterConstructor(NodeVisitor):
         return expr_list
 
     def visit_expr_list(self, node, vc):  # noqa
+        """ create an expr_list item """
         return vc[0]
 
     def visit_simple_expr_list(self, node, vc):  # noqa
@@ -200,17 +205,21 @@ class _FilterConstructor(NodeVisitor):
         return {col: rhs}
 
     def visit_oper_expr_rhs(self, node, vc):  # noqa
+        """ returns the operattor right-hand-side expression list item """
         oper, _, value_tok = vc
         return [oper, value_tok]
 
     def visit_column_expr_rhs(self, node, vc):  # noqa
+        """ return the 'column' operation right-hand-side expression list item"""
         col_oper, _, oper, _, col_name = vc
         return [col_oper.text, oper, col_name]
 
     def visit_oper(self, node, vc):  # noqa
+        """ converts the grammer operator to an IPF filter operator """
         return _OPERATORS[node.text]
 
     def visit_group_tok(self, node, vc):  # noqa
+        """ returns the group operator (and, or) value """
         return node.text
 
     def visit_cmp_value_tok(self, node, vc):  # noqa
@@ -228,18 +237,31 @@ class _FilterConstructor(NodeVisitor):
         return value_node.text
 
     def visit_number(self, node, vc):  # noqa
+        """ returns the value as an integer """
         return int(node.text)
 
     def visit_col_name(self, node, vc):  # noqa
+        """ returns the column name (str) """
         return node.text
 
     def generic_visit(self, node, visited_children):
+        """ pass through for nodes not explicility visited """
         return visited_children or node
 
 
 _filter_builder = _FilterConstructor()
 
 
-def parse_filter(expr):
+def parse_filter(expr: str) -> dict:
+    """
+    This function is used to convert a filter expression, as a string in the form
+    of FILTER_GRAMMER, and return the IPF filter dictionary that is consumed by
+    the `filters` body parameters.
+
+    Parameters
+    ----------
+    expr
+        The filter expression, for example "hostname = switch1.dc1"
+    """
     res = _grammer.parse(expr.strip().replace("\n", ""))
     return _filter_builder.visit(res)[0]
