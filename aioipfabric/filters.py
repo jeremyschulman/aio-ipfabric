@@ -123,7 +123,7 @@ _OPERATORS = MappingProxyType(
         "!=~": "nreg",
         "empty": "empty",
         "net": "cidr",
-        "<": "le",
+        "<": "lt",
         "<=": "lte",
         ">": "gt",
         ">=": "gte",
@@ -140,13 +140,15 @@ group_expr_list     = group_expr ws ("," ws group_expr)+
 group_expr          = group_tok ws "(" ws expr_list ws ")"
 expr_list           = simple_expr_list / group_expr_list
 simple_expr_list    = simple_expr ws ("," ws simple_expr)+
-simple_expr         = col_name ws (column_expr_rhs / oper_expr_rhs)
+simple_expr         = col_name ws (color_expr_rhs / column_expr_rhs / oper_expr_rhs)
 oper_expr_rhs       = oper ws cmp_value_tok
 column_expr_rhs     = "column" ws oper ws col_name
+color_expr_rhs      = "color" ws oper ws number
 #
 # Token parts
 #
 col_name        = ~"[a-z0-9]+"i
+number          = ~"[0-9]+"
 sq_words        = ~"[^']+"
 dq_words        = ~"[^\"]+"
 ws              = ~"\s*"
@@ -213,6 +215,13 @@ class _FilterConstructor(NodeVisitor):
         """ return the 'column' operation right-hand-side expression list item"""
         col_oper, _, oper, _, col_name = vc
         return [col_oper.text, oper, col_name]
+
+    def visit_color_expr_rhs(self, node, vc):  # noqa
+        """ return the 'color' operation right-hand-side, value is a string-number """
+        color_oper, _, oper, _, color_val = vc
+        # TODO: check the range of the color_val number?
+        # TODO: check the oper against the set of usuable options?
+        return [color_oper.text, oper, str(color_val)]
 
     def visit_oper(self, node, vc):  # noqa
         """ converts the grammer operator to an IPF filter operator """
