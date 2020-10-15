@@ -17,14 +17,13 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
-from typing import Optional, Dict, List
 from dataclasses import dataclass
 
 # -----------------------------------------------------------------------------
 # Private Imports
 # -----------------------------------------------------------------------------
 
-from .base_client import IPFBaseClient
+from .base_client import IPFBaseClient, table_api
 
 
 # -----------------------------------------------------------------------------
@@ -52,104 +51,60 @@ class IPFInventoryMixin(IPFBaseClient):
         - device managed IP addresses
     """
 
-    async def fetch_devices(
-        self,
-        columns: Optional[List[str]] = None,
-        filters: Optional[Dict] = None,
-        raw=False,
-    ) -> dict:
+    @table_api(
+        default_columns=[
+            "sn",
+            "hostname",
+            "siteKey",
+            "siteName",
+            "loginIp",
+            "loginType",
+            "uptime",
+            "vendor",
+            "platform",
+            "family",
+            "version",
+            "model",
+        ]
+    )
+    async def fetch_devices(self, request) -> dict:
         """
-        This coroutine is used to fetch all device inventory records.  The
-        complete API response body is returned, including the _meta data.
+        This coroutine is used to fetch all device inventory records.
 
         Parameters
         ----------
-        columns:
-            Optional list of table columns to retrieve.  If not provided, then
-            all of the table columns are retrieved.
-
-        filters:
-            Optional dictionary definiting API filters structure to limit the
-            devices retrieved from inventory.
-
-        raw:
-            When True the API payload is returned that includes both the _meta and the
-            data keys.
-
-            When False (default) only the API data list is returned.
+        request: dict
+            The API body request payload
         """
-        payload = {
-            "columns": columns
-            or [
-                "id",
-                "sn",
-                "hostname",
-                "siteKey",
-                "siteName",
-                "loginIp",
-                "loginType",
-                "uptime",
-                "vendor",
-                "platform",
-                "family",
-                "version",
-                "model",
-            ],
-            "snapshot": self.active_snapshot,
-        }
+        return await self.api.post(URIs.devices, json=request)
 
-        if filters:
-            payload["filters"] = filters
-
-        res = await self.api.post(URIs.devices, json=payload)
-        res.raise_for_status()
-        body = res.json()
-        return body if raw else body["data"]
-
-    async def fetch_ipaddrs(self, raw=False):
+    @table_api(
+        default_columns=["sn", "hostname", "intName", "siteName", "mac", "ip", "net"]
+    )
+    async def fetch_ipaddrs(self, request):
         """ couroutine to retrieve all IP addresses used by all managed devices """
-        payload = {
-            "columns": [
-                "id",
-                "sn",
-                "hostname",
-                "intName",
-                "siteName",
-                "mac",
-                "ip",
-                "net",
-            ],
-            "snapshot": self.active_snapshot,
-        }
-        res = await self.api.post(URIs.managed_ipaddrs, json=payload)
-        res.raise_for_status()
-        body = res.json()
-        return body if raw else body["data"]
+        return await self.api.post(URIs.managed_ipaddrs, json=request)
 
-    async def fetch_optics(self, raw=False):
+    @table_api(
+        default_columns=[
+            "deviceSn",
+            "hostname",
+            "siteName",
+            "name",
+            "dscr",
+            "pid",
+            "sn",
+            "vid",
+            "vendor",
+            "platform",
+            "model",
+        ]
+    )
+    async def fetch_optics(self, request: dict):
         """ coroutine to retrieve all optic parts based on an intent verification rule """
-        optic_modules = {
-            "columns": [
-                "id",
-                "deviceSn",
-                "hostname",
-                "siteKey",
-                "siteName",
-                "deviceId",
-                "name",
-                "dscr",
-                "pid",
-                "sn",
-                "vid",
-                "vendor",
-                "platform",
-                "model",
-            ],
-            "filters": {"pid": ["color", "eq", "0"]},
-            "snapshot": self.active_snapshot,
-            "reports": "/inventory/part-numbers",
-        }
-        res = await self.api.post(URIs.device_parts, json=optic_modules)
-        res.raise_for_status()
-        body = res.json()
-        return body if raw else body["data"]
+        filter_report = {"pid": ["color", "eq", "0"]}
+
+        request["filters"].update(filter_report)
+        request["reports"] = "/inventory/part-numbers"
+
+        return await self.api.post(URIs.device_parts, json=request)

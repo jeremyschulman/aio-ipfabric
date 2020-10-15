@@ -20,6 +20,7 @@
 from typing import Optional, AnyStr, Iterable
 from os import environ, getenv
 from dataclasses import dataclass
+from functools import wraps
 
 # -----------------------------------------------------------------------------
 # Private Imports
@@ -32,7 +33,7 @@ from .api import IPFSession
 # Exports
 # -----------------------------------------------------------------------------
 
-__all__ = ["IPFBaseClient"]
+__all__ = ["IPFBaseClient", "table_api"]
 
 
 # -----------------------------------------------------------------------------
@@ -47,6 +48,34 @@ class URIs:
     """ identifies API URL endpoings used"""
 
     snapshots = "snapshots"
+
+
+def table_api(default_columns):
+    """ Method decorator for all Table related APIs """
+
+    def decorator(methcoro):
+        """ decorates the method using the default_ parameters """
+
+        @wraps(methcoro)
+        async def wrapper(self, request=None, return_="data", **kwargs):
+            """ wrapper that prepares the API with default behaviors """
+            payload = request or {}
+            payload.setdefault("columns", (kwargs.get("columns") or default_columns))
+            payload.setdefault("snapshot", self.active_snapshot)
+            payload.setdefault("filters", kwargs.get("filters") or {})
+
+            res = await methcoro(self, payload)
+            if return_ == "response":
+                return res
+
+            res.raise_for_status()
+            body = res.json()
+
+            return {"data": body["data"], "meta": body["_meta"], "body": body}[return_]
+
+        return wrapper
+
+    return decorator
 
 
 class IPFBaseClient(object):
