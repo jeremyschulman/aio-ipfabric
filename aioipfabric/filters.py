@@ -115,18 +115,18 @@ __all__ = ["parse_filter"]
 
 _OPERATORS = MappingProxyType(
     {
-        "=": "eq",
-        "!=": "neq",
-        "has": "like",
-        "!has": "notlike",
-        "=~": "reg",
-        "!=~": "nreg",
-        "empty": "empty",
-        "net": "cidr",
-        "<": "le",
-        "<=": "lte",
-        ">": "gt",
-        ">=": "gte",
+        "=": "eq",  # equals exactly
+        "!=": "neq",  # does not equal
+        "has": "like",  # string contains
+        "!has": "notlike",  # string does not contain
+        "=~": "reg",  # match regular expression
+        "!=~": "nreg",  # does not match regular expression
+        "empty": "empty",  # column is empty
+        "net": "cidr",  # value match using IP CIDR value
+        "<": "lt",  # less than
+        "<=": "lte",  # less than or equal to
+        ">": "gt",  # greater than
+        ">=": "gte",  # greather than or equal to
     }
 )
 
@@ -140,9 +140,10 @@ group_expr_list     = group_expr ws ("," ws group_expr)+
 group_expr          = group_tok ws "(" ws expr_list ws ")"
 expr_list           = simple_expr_list / group_expr_list
 simple_expr_list    = simple_expr ws ("," ws simple_expr)+
-simple_expr         = col_name ws (column_expr_rhs / oper_expr_rhs)
+simple_expr         = col_name ws (column_expr_rhs / color_expr_rhs / oper_expr_rhs)
 oper_expr_rhs       = oper ws cmp_value_tok
 column_expr_rhs     = "column" ws oper ws col_name
+color_expr_rhs      = "color" ws oper ws cmp_value_tok
 #
 # Token parts
 #
@@ -213,6 +214,11 @@ class _FilterConstructor(NodeVisitor):
         """ return the 'column' operation right-hand-side expression list item"""
         col_oper, _, oper, _, col_name = vc
         return [col_oper.text, oper, col_name]
+
+    def visit_color_expr_rhs(self, node, vc):  # noqa
+        """ return the 'column' operation right-hand-side expression list item"""
+        col_oper, _, oper, _, col_val = vc
+        return [col_oper.text, oper, col_val]
 
     def visit_oper(self, node, vc):  # noqa
         """ converts the grammer operator to an IPF filter operator """
