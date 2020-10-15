@@ -24,7 +24,7 @@ from dataclasses import dataclass
 # -----------------------------------------------------------------------------
 
 from .base_client import IPFBaseClient, table_api
-
+from .consts import COLOR_GREEN
 
 # -----------------------------------------------------------------------------
 #
@@ -102,7 +102,7 @@ class IPFInventoryMixin(IPFBaseClient):
     )
     async def fetch_optics(self, request: dict):
         """ coroutine to retrieve all optic parts based on an intent verification rule """
-        filter_report = {"pid": ["color", "eq", "0"]}
+        filter_report = {"pid": ["color", "eq", COLOR_GREEN]}
 
         request["filters"].update(filter_report)
         request["reports"] = "/inventory/part-numbers"

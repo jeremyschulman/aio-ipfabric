@@ -37,4 +37,9 @@ class ENV:
     token = "IPF_TOKEN"
 
 
-API_VER = "api/v1/"
+API_VER = "/api/v1/"
+
+COLOR_GREEN = 0
+COLOR_BLUE = 10
+COLOR_YELLOW = 20
+COLOR_RED = 30
