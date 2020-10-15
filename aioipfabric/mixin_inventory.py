@@ -38,10 +38,10 @@ from .base_client import IPFBaseClient
 class URIs:
     """ identifies API URL endpoings used"""
 
-    devices = "tables/inventory/devices/"
-    device_parts = "tables/inventory/pn"
-    managed_ipaddrs = "tables/addressing/managed-devs/"
-    snapshots = "snapshots"
+    devices = "/tables/inventory/devices/"
+    device_parts = "/tables/inventory/pn"
+    managed_ipaddrs = "/tables/addressing/managed-devs/"
+    snapshots = "/snapshots"
 
 
 class IPFInventoryMixin(IPFBaseClient):
