@@ -1,12 +1,38 @@
 # IP Fabric Table Filtering
 
-For the IP Fabric Table APIs you are able to provide a `filters` in the body payload.  The structure
-of the `filters` value is a dictionary whose value is described from within the product pages, but not readily
-accessible.  As a result the `aio-ipfabric` client provides a helper method called `parse_filter()` that
+IP Fabric Table APIs allow you to provide a `filters` in the body payload.  The
+structure of the `filters` value is a dictionary whose value is described from
+within the product pages, but not readily accessible.  As a result the
+`aio-ipfabric` client provides a helper method called `parse_filter()` that
 takes a string expression and translates it into the API dictionary structure.
 
-The following are example string expressions.  For complete documentation of the available filtering
-expressions (aka parsing grammar), please refer to the code [filters.py](../aioipfabric/filters.py).
+For complete documentation of the available filtering expressions (aka parsing
+grammar), please refer to the code [filters.py](../aioipfabric/filters.py).
+
+# Filter Operators
+  * `A = B `  - A exactly equals B; supporing string and numeric
+  * `A =~ B` - A matches regular expression B.  Need to quote the reqular expression (see Example)
+  * `A ~ B ` - A contains the substring
+  * `A ? true` - A contains any value
+
+
+  * `A != B` - A does not exactly match B; supporting string and numeric
+  * `A !=~ B` - A does not match the regular expression B
+  * `A !~ B` - A does not contain the substring B <br/>
+  * `A ? false` - A is empty
+
+**Numeric Only**
+  * `A < B` - A is less than B
+  * `A <= B` - A is less than or equal to B
+  * `A > B` - A is greater than B
+  * `A >= B` - A is greater than or equal to B <br/>
+
+**Special**
+  * `A column <operator> B` - Used to compare one column with another (see Example)
+  * `A color <operator> B` - Used to retrieve invent verifcation rule report results (see Example)
+  * `A net B` - Find IP addresses in column A that are in the subnet B.
+
+# Examples
 
 **Simple Expressions**<br/>
 
@@ -18,6 +44,11 @@ filter_expr = "hostname = foo"
 Find all records with the `hostname` column matching the reqular expression "abc.*"
 ```python
 filter_expr = "hostname =~ 'abc.*'"
+```
+
+Find all records with the `hostname` column containing the string "abc"
+```
+filter_expr = "hostname ~ abc"
 ```
 
 **Grouped Expressions**<br/>
@@ -75,4 +106,12 @@ filter_expr = "intName color = 20"
 Find al records whose role assigned to the "intName" column is greater than "green":
 ```python
 filter_expr = "intName color > 0"
+```
+
+**Network CIDR**<br/>
+Filter records when columns are IP address to match a give subnet.
+
+Find all records whose login IP address is in the subnet 172.16.20.0/24:
+```
+filter_expr = "loginIp net 172.16.20.0/24"
 ```
