@@ -155,7 +155,7 @@ sq              = "'"
 dq              = "\""
 word            = ~r"[a-z0-9\.\/_\-]+"
 group_tok       = 'and' / 'or'
-oper            = '!=~' / '=~' / '!=' / 'net' / '!~' / '!?' / '<=' / '>=' / '=' / '~' / '?'  / '<' / '>'
+oper            = '!=~' / '=~' / '!=' / 'net' / '!~' / '<=' / '>=' / '=' / '~' / '?'  / '<' / '>'
 cmp_value_tok   = sq_tok / dq_tok / word
 sq_tok          = sq sq_words sq
 dq_tok          = dq dq_words dq
