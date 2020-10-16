@@ -26,7 +26,7 @@ from functools import wraps
 # Private Imports
 # -----------------------------------------------------------------------------
 
-from .consts import ENV, API_VER
+from .consts import ENV, API_VER, TableFields
 from .api import IPFSession
 from .filters import parse_filter
 
@@ -59,15 +59,17 @@ def table_api(methcoro):
         """ wrapper that prepares the API with default behaviors """
 
         payload = request or {}
-        payload.setdefault("snapshot", self.active_snapshot)
-        payload.setdefault("filters", kwargs.get("filters") or {})
-        payload.setdefault("columns", kwargs.get("columns") or [])
+        payload.setdefault(TableFields.snapshot, self.active_snapshot)
+        payload.setdefault(TableFields.filters, kwargs.get(TableFields.filters) or {})
+
+        if TableFields.columns in kwargs:
+            payload[TableFields.columns] = kwargs[TableFields.columns]
 
         # TODO: perhaps add a default_pagination setting to the IP Client?
         #       for now the default will be no pagnication
 
-        if (pg := kwargs.get("pagination")) is not None:
-            payload["pagination"] = pg
+        if TableFields.pagination in kwargs:
+            payload["pagination"] = kwargs[TableFields.pagination]
 
         res = await methcoro(self, payload)
 
@@ -205,5 +207,22 @@ class IPFBaseClient(object):
         cls_name = self.__class__.__name__
         base_url = self.api.base_url
         return f"{cls_name}: {base_url}"
+
+    # -------------------------------------------------------------------------
+    #                      ASYNC CONTEXT MANAGER METHODS
+    # -------------------------------------------------------------------------
+
+    async def __aenter__(self):
+        """ login and return instance """
+        await self.login()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """ close the http async api instance """
+        await self.api.aclose()
+
+    # -------------------------------------------------------------------------
+    #                             STATIC METHODS
+    # -------------------------------------------------------------------------
 
     parse_filter = staticmethod(parse_filter)

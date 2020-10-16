@@ -30,7 +30,7 @@ from httpx import Response
 # -----------------------------------------------------------------------------
 
 from aioipfabric.base_client import IPFBaseClient, table_api
-from aioipfabric.consts import COLOR_GREEN
+from aioipfabric.consts import COLOR_GREEN, TableFields
 
 # -----------------------------------------------------------------------------
 #
@@ -86,7 +86,7 @@ class IPFInventoryMixin(IPFBaseClient):
             "version",
             "model",
         ]
-        request.setdefault("columns", default_columns)
+        request.setdefault(TableFields.columns, default_columns)
         return await self.api.post(URIs.devices, json=request)
 
     @table_api
