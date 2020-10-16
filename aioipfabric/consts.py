@@ -18,7 +18,7 @@
 # -----------------------------------------------------------------------------
 
 from dataclasses import dataclass
-
+from enum import Enum
 
 # -----------------------------------------------------------------------------
 #
@@ -37,4 +37,20 @@ class ENV:
     token = "IPF_TOKEN"
 
 
-API_VER = "api/v1/"
+API_VER = "/api/v1/"
+
+
+COLOR_GREEN = 0
+COLOR_BLUE = 10
+COLOR_YELLOW = 20
+COLOR_RED = 30
+
+
+class TableFields(str, Enum):
+    """ identifies the API Table request body fields """
+
+    columns = "columns"
+    filters = "filters"
+    pagination = "pagination"
+    snapshot = "snapshot"
+    reports = "reports"

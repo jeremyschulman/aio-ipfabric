@@ -20,19 +20,21 @@
 from typing import Optional, AnyStr, Iterable
 from os import environ, getenv
 from dataclasses import dataclass
+from functools import wraps
 
 # -----------------------------------------------------------------------------
 # Private Imports
 # -----------------------------------------------------------------------------
 
-from .consts import ENV, API_VER
+from .consts import ENV, API_VER, TableFields
 from .api import IPFSession
+from .filters import parse_filter
 
 # -----------------------------------------------------------------------------
 # Exports
 # -----------------------------------------------------------------------------
 
-__all__ = ["IPFBaseClient"]
+__all__ = ["IPFBaseClient", "table_api"]
 
 
 # -----------------------------------------------------------------------------
@@ -46,7 +48,40 @@ __all__ = ["IPFBaseClient"]
 class URIs:
     """ identifies API URL endpoings used"""
 
-    snapshots = "snapshots"
+    snapshots = "/snapshots"
+
+
+def table_api(methcoro):
+    """ Method decorator for all Table related APIs """
+
+    @wraps(methcoro)
+    async def wrapper(self, request=None, return_as="data", **kwargs):
+        """ wrapper that prepares the API with default behaviors """
+
+        payload = request or {}
+        payload.setdefault(TableFields.snapshot, self.active_snapshot)
+        payload.setdefault(TableFields.filters, kwargs.get(TableFields.filters) or {})
+
+        if TableFields.columns in kwargs:
+            payload[TableFields.columns] = kwargs[TableFields.columns]
+
+        # TODO: perhaps add a default_pagination setting to the IP Client?
+        #       for now the default will be no pagnication
+
+        if TableFields.pagination in kwargs:
+            payload["pagination"] = kwargs[TableFields.pagination]
+
+        res = await methcoro(self, payload)
+
+        if return_as == "raw":
+            return res
+
+        res.raise_for_status()
+        body = res.json()
+
+        return {"data": body["data"], "meta": body["_meta"], "body": body}[return_as]
+
+    return wrapper
 
 
 class IPFBaseClient(object):
@@ -108,15 +143,13 @@ class IPFBaseClient(object):
         username = username or getenv(ENV.username)
         password = password or getenv(ENV.password)
 
-        # maintain the asyncio loop for methods that need to act synchronously.
-        # self.loop = asyncio.get_event_loop()
-
         # ensure that the base_url ends with a slash since we will be using
         # httpx with base_url. there is a known _requirement_ for
         # ends-with-slash which if not in place causes issues.
-
-        if not base_url.endswith("/"):
-            base_url += "/"
+        # TODO: perhaps this issue has been fixed in latter versions of httpx; not
+        #       seeing the same issue with httpx > 0.14
+        # if not base_url.endswith("/"):
+        #     base_url += "/"
 
         self.api = IPFSession(
             base_url=base_url + API_VER,
@@ -174,3 +207,22 @@ class IPFBaseClient(object):
         cls_name = self.__class__.__name__
         base_url = self.api.base_url
         return f"{cls_name}: {base_url}"
+
+    # -------------------------------------------------------------------------
+    #                      ASYNC CONTEXT MANAGER METHODS
+    # -------------------------------------------------------------------------
+
+    async def __aenter__(self):
+        """ login and return instance """
+        await self.login()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """ close the http async api instance """
+        await self.api.aclose()
+
+    # -------------------------------------------------------------------------
+    #                             STATIC METHODS
+    # -------------------------------------------------------------------------
+
+    parse_filter = staticmethod(parse_filter)
