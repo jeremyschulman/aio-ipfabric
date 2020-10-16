@@ -50,32 +50,26 @@ class URIs:
     snapshots = "snapshots"
 
 
-def table_api(default_columns):
+def table_api(methcoro):
     """ Method decorator for all Table related APIs """
 
-    def decorator(methcoro):
-        """ decorates the method using the default_ parameters """
+    @wraps(methcoro)
+    async def wrapper(self, request=None, return_="data", **kwargs):
+        """ wrapper that prepares the API with default behaviors """
+        payload = request or {}
+        payload.setdefault("snapshot", self.active_snapshot)
+        payload.setdefault("filters", kwargs.get("filters") or {})
 
-        @wraps(methcoro)
-        async def wrapper(self, request=None, return_="data", **kwargs):
-            """ wrapper that prepares the API with default behaviors """
-            payload = request or {}
-            payload.setdefault("columns", (kwargs.get("columns") or default_columns))
-            payload.setdefault("snapshot", self.active_snapshot)
-            payload.setdefault("filters", kwargs.get("filters") or {})
+        res = await methcoro(self, payload)
+        if return_ == "response":
+            return res
 
-            res = await methcoro(self, payload)
-            if return_ == "response":
-                return res
+        res.raise_for_status()
+        body = res.json()
 
-            res.raise_for_status()
-            body = res.json()
+        return {"data": body["data"], "meta": body["_meta"], "body": body}[return_]
 
-            return {"data": body["data"], "meta": body["_meta"], "body": body}[return_]
-
-        return wrapper
-
-    return decorator
+    return wrapper
 
 
 class IPFBaseClient(object):

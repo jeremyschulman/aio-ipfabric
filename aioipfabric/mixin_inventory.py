@@ -20,6 +20,12 @@
 from dataclasses import dataclass
 
 # -----------------------------------------------------------------------------
+# Public Imports
+# -----------------------------------------------------------------------------
+
+from httpx import Response
+
+# -----------------------------------------------------------------------------
 # Private Imports
 # -----------------------------------------------------------------------------
 
@@ -51,8 +57,22 @@ class IPFInventoryMixin(IPFBaseClient):
         - device managed IP addresses
     """
 
-    @table_api(
-        default_columns=[
+    @table_api
+    async def fetch_devices(self, request: dict) -> Response:
+        """
+        Fetch <Inventory | Devices> table records.
+
+        Parameters
+        ----------
+        request: dict
+            The API body request payload, prepared by the table_api decorator
+
+        Returns
+        -------
+        The HTTPx response, which will be post-processed by the table_api decorator.
+        """
+
+        default_columns = [
             "sn",
             "hostname",
             "siteKey",
@@ -66,27 +86,46 @@ class IPFInventoryMixin(IPFBaseClient):
             "version",
             "model",
         ]
-    )
-    async def fetch_devices(self, request) -> dict:
+        request.setdefault("columns", default_columns)
+        return await self.api.post(URIs.devices, json=request)
+
+    @table_api
+    async def fetch_ipaddrs(self, request: dict) -> Response:
         """
-        This coroutine is used to fetch all device inventory records.
+        Fetch <Technology | Adressing | Managed IPs> table records.
 
         Parameters
         ----------
         request: dict
-            The API body request payload
-        """
-        return await self.api.post(URIs.devices, json=request)
+            The API body request payload, prepared by the table_api decorator
 
-    @table_api(
-        default_columns=["sn", "hostname", "intName", "siteName", "mac", "ip", "net"]
-    )
-    async def fetch_ipaddrs(self, request):
-        """ couroutine to retrieve all IP addresses used by all managed devices """
+        Returns
+        -------
+        The HTTPx response, which will be post-processed by the table_api decorator.
+        """
+        default_columns = ["sn", "hostname", "intName", "siteName", "mac", "ip", "net"]
+
+        request.setdefault("columns", default_columns)
+
         return await self.api.post(URIs.managed_ipaddrs, json=request)
 
-    @table_api(
-        default_columns=[
+    @table_api
+    async def fetch_optics(self, request: dict) -> Response:
+        """
+        Fetch <Technology | Part numbers | SFP modules> table records.
+
+        Parameters
+        ----------
+        request: dict
+            The API body request payload, prepared by the table_api decorator
+
+        Returns
+        -------
+        The HTTPx response, which will be post-processed by the table_api decorator.
+        """
+        filter_report = {"pid": ["color", "eq", COLOR_GREEN]}
+
+        default_columns = [
             "deviceSn",
             "hostname",
             "siteName",
@@ -99,11 +138,8 @@ class IPFInventoryMixin(IPFBaseClient):
             "platform",
             "model",
         ]
-    )
-    async def fetch_optics(self, request: dict):
-        """ coroutine to retrieve all optic parts based on an intent verification rule """
-        filter_report = {"pid": ["color", "eq", COLOR_GREEN]}
 
+        request.setdefault("columns", default_columns)
         request["filters"].update(filter_report)
         request["reports"] = "/inventory/part-numbers"
 
