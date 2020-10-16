@@ -12,7 +12,7 @@ grammar), please refer to the code [filters.py](../aioipfabric/filters.py).
 # Filter Operators
   * `A = B `  - A exactly equals B; supporing string and numeric
   * `A =~ B` - A matches regular expression B.  Need to quote the reqular expression (see Example)
-  * `A ~ B ` - A contains the substring
+  * `A ~ B ` - A contains the substring B
   * `A ? true` - A contains any value
 
 
@@ -112,6 +112,7 @@ filter_expr = "intName color > 0"
 Filter records when columns are IP address to match a give subnet.
 
 Find all records whose login IP address is in the subnet 172.16.20.0/24:
-```
+
+```python
 filter_expr = "loginIp net 172.16.20.0/24"
 ```
