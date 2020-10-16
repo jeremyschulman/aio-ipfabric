@@ -27,8 +27,8 @@ import logging
 # -----------------------------------------------------------------------------
 
 import aioipfabric
-from .aiofut import as_completed
-from .base_client import IPFBaseClient
+from aioipfabric.aiofut import as_completed
+from aioipfabric.base_client import IPFBaseClient
 
 # -----------------------------------------------------------------------------
 # Exports

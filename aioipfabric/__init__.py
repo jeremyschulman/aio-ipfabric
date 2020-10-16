@@ -13,4 +13,11 @@
 #  limitations under the License.
 #
 
-from aioipfabric.client import IPFabricClient  # noqa
+from aioipfabric.client import IPFabricClient
+
+from aioipfabric.base_client import (
+    table_api,
+    IPFBaseClient as IPFabricClientMixin,
+)
+
+__all__ = [IPFabricClient, IPFabricClientMixin, table_api]

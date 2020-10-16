@@ -147,13 +147,13 @@ color_expr_rhs      = "color" ws oper ws cmp_value_tok
 #
 # Token parts
 #
-col_name        = ~"[a-z0-9]+"i
+col_name        = ~"[a-z0-9_\-]+"i
 sq_words        = ~"[^']+"
 dq_words        = ~"[^\"]+"
 ws              = ~"\s*"
 sq              = "'"
 dq              = "\""
-word            = ~r"[a-z0-9\.\/]+"
+word            = ~r"[a-z0-9\.\/_\-]+"
 group_tok       = 'and' / 'or'
 oper            = '!=~' / '=~' / '!=' / 'net' / '!has' / '<=' / '>=' / '=' / 'has' / 'empty'  / '<' / '>'
 cmp_value_tok   = sq_tok / dq_tok / word

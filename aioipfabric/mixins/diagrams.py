@@ -27,7 +27,7 @@ from dataclasses import dataclass
 # Private Imports
 # -----------------------------------------------------------------------------
 
-from .base_client import IPFBaseClient
+from aioipfabric.base_client import IPFBaseClient
 
 
 # -----------------------------------------------------------------------------

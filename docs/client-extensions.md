@@ -12,7 +12,7 @@ What this means is that as a Developer you can define a new class that is
 subclassed from `IPFBaseClass` that includes new methods for the API features
 you want to provide.
 
-See [IPFConfigMixin](../aioipfabric/mixin_configs.py) for example.
+See [IPFConfigMixin](../aioipfabric/mixins/mixin_configs.py) for example.
 
 You can then mixin this class in one of the following ways:
 
@@ -27,7 +27,7 @@ approach to using Mixins.  For example:
 
 ````python
 from aioipfabric import IPFabricClient
-from aioipfabric.mixin_configs import IPFConfigsMixin
+from aioipfabric.mixins.mixin_configs import IPFConfigsMixin
 
 class MyClient(IPFConfigsMixin, IPFabricClient):
     pass
@@ -45,7 +45,7 @@ method.
 
 ````python
 from aioipfabric import IPFabricClient
-from aioipfabric.mixin_configs import IPFConfigsMixin
+from aioipfabric.mixins.mixin_configs import IPFConfigsMixin
 
 # create an instance of the client
 
@@ -59,7 +59,7 @@ using the `mixin()` method of the IPFabricClient.
 
 ````python
 from aioipfabric import IPFabricClient
-from aioipfabric.mixin_configs import IPFConfigsMixin
+from aioipfabric.mixins.mixin_configs import IPFConfigsMixin
 
 # create an instance of the client
 

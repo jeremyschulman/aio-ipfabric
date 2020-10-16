@@ -29,8 +29,8 @@ from httpx import Response
 # Private Imports
 # -----------------------------------------------------------------------------
 
-from .base_client import IPFBaseClient, table_api
-from .consts import COLOR_GREEN
+from aioipfabric.base_client import IPFBaseClient, table_api
+from aioipfabric.consts import COLOR_GREEN
 
 # -----------------------------------------------------------------------------
 #
@@ -43,9 +43,9 @@ from .consts import COLOR_GREEN
 class URIs:
     """ identifies API URL endpoings used"""
 
-    devices = "/tables/inventory/devices/"
+    devices = "/tables/inventory/devices"
     device_parts = "/tables/inventory/pn"
-    managed_ipaddrs = "/tables/addressing/managed-devs/"
+    managed_ipaddrs = "/tables/addressing/managed-devs"
     snapshots = "/snapshots"
 
 
