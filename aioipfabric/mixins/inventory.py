@@ -49,6 +49,21 @@ class URIs:
     snapshots = "/snapshots"
 
 
+DEFAULT_PARTS_COLUMNS = [
+    "deviceSn",
+    "hostname",
+    "siteName",
+    "name",
+    "dscr",
+    "pid",
+    "sn",
+    "vid",
+    "vendor",
+    "platform",
+    "model",
+]
+
+
 class IPFInventoryMixin(IPFBaseClient):
     """
     IP Fabric client mixin supporting the inventory features.
@@ -125,22 +140,25 @@ class IPFInventoryMixin(IPFBaseClient):
         """
         filter_report = {"pid": ["color", "eq", COLOR_GREEN]}
 
-        default_columns = [
-            "deviceSn",
-            "hostname",
-            "siteName",
-            "name",
-            "dscr",
-            "pid",
-            "sn",
-            "vid",
-            "vendor",
-            "platform",
-            "model",
-        ]
-
-        request.setdefault("columns", default_columns)
+        request.setdefault("columns", DEFAULT_PARTS_COLUMNS)
         request["filters"].update(filter_report)
         request["reports"] = "/inventory/part-numbers"
 
+        return await self.api.post(URIs.device_parts, json=request)
+
+    @table_api
+    async def fetch_device_parts(self, request: dict) -> Response:
+        """
+        Fetch <Technology | Part numbers> table records.
+
+        Parameters
+        ----------
+        request: dict
+            The API body request payload, prepared by the table_api decorator
+
+        Returns
+        -------
+        The HTTPx response, which will be post-processed by the table_api decorator.
+        """
+        request.setdefault("columns", DEFAULT_PARTS_COLUMNS)
         return await self.api.post(URIs.device_parts, json=request)

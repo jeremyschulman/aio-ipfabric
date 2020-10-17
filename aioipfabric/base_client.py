@@ -179,6 +179,10 @@ class IPFBaseClient(object):
 
         self.active_snapshot = self.snapshots[0]["id"]
 
+    async def logout(self):
+        """ close the async connection """
+        await self.api.aclose()
+
     async def fetch_snapshots(self) -> None:
         """ coroutine to retrieve all known snapshots, returns List[dict] records """
         res = await self.api.get(URIs.snapshots)
@@ -219,7 +223,7 @@ class IPFBaseClient(object):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """ close the http async api instance """
-        await self.api.aclose()
+        await self.logout()
 
     # -------------------------------------------------------------------------
     #                             STATIC METHODS
