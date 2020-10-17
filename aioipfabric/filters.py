@@ -153,7 +153,7 @@ dq_words        = ~"[^\"]+"
 ws              = ~"\s*"
 sq              = "'"
 dq              = "\""
-word            = ~r"[a-z0-9\.\/_\-]+"
+word            = ~r"[a-z0-9\.\/_\-]+"i
 group_tok       = 'and' / 'or'
 oper            = '!=~' / '=~' / '!=' / 'net' / '!~' / '<=' / '>=' / '=' / '~' / '?'  / '<' / '>'
 cmp_value_tok   = sq_tok / dq_tok / word
