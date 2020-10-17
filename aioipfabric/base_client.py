@@ -167,6 +167,7 @@ class IPFBaseClient(object):
 
         self.snapshots = None
         self.active_snapshot = None
+        self.version = None  # the IPF product version
 
     async def login(self):
         """
@@ -175,6 +176,9 @@ class IPFBaseClient(object):
         snapshot.
         """
         await self.api.authenticate()
+        res = await self.api.get("/os/version")
+        res.raise_for_status()
+        self.version = res.json()["version"]
         await self.fetch_snapshots()
 
         self.active_snapshot = self.snapshots[0]["id"]
