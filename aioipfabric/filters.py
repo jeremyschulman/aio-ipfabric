@@ -28,14 +28,14 @@ Simple Expressions:
 
 Grouped Expressions:
     Both site is equal to 'atl' and hostname contains 'sw2'
-    and (site = atl, hostname has sw2, vendor = cisco)
+    and (site = atl, hostname ~ sw2, vendor = cisco)
 
     Either site is euqal to 'atl' or hostname contains 'sw2'
-    or (site = atl, hostname has sw2)
+    or (site = atl, hostname ~ sw2)
 
 Nested Group Expressions:
     or (
-        and(site = atl, hostname has 'core'),
+        and(site = atl, hostname ~ 'core'),
         and(site = chc, hostname =~ '.*club-switch2[12]')
     )
 
@@ -141,9 +141,11 @@ group_expr          = group_tok ws "(" ws expr_list ws ")"
 expr_list           = simple_expr_list / group_expr_list
 simple_expr_list    = simple_expr ws ("," ws simple_expr)+
 simple_expr         = col_name ws (column_expr_rhs / color_expr_rhs / oper_expr_rhs)
-oper_expr_rhs       = oper ws cmp_value_tok
-column_expr_rhs     = "column" ws oper ws col_name
-color_expr_rhs      = "color" ws oper ws cmp_value_tok
+num_oper_expr_rhs   = (num_oper / ei_oper) ws int_tok
+str_oper_expr_rhs   = (str_oper / ei_oper) ws cmp_value_tok
+oper_expr_rhs       = (num_oper_expr_rhs / str_oper_expr_rhs)
+column_expr_rhs     = "column" ws ei_oper ws col_name
+color_expr_rhs      = "color" ws num_oper_expr_rhs
 #
 # Token parts
 #
@@ -154,12 +156,16 @@ ws              = ~"\s*"
 sq              = "'"
 dq              = "\""
 word            = ~r"[a-z0-9\.\/_\-]+"i
+int_tok         = ~"\d+"
 group_tok       = 'and' / 'or'
-oper            = '!=~' / '=~' / '!=' / 'net' / '!~' / '<=' / '>=' / '=' / '~' / '?'  / '<' / '>'
+str_oper        = '!=~' / '=~' / 'net' / '!~' / '~' / '?'
+num_oper        =  '<=' / '>=' / '<' / '>'
+ei_oper         = '!=' / '='
 cmp_value_tok   = sq_tok / dq_tok / word
 sq_tok          = sq sq_words sq
 dq_tok          = dq dq_words dq
 """
+
 
 _grammer = Grammar(FILTER_GRAMMER)
 
@@ -205,10 +211,23 @@ class _FilterConstructor(NodeVisitor):
 
         return {col: rhs}
 
+    # -------------------------------------------------------------------------
+    #               Right Hand Side (RHS) Expressions
+    # -------------------------------------------------------------------------
+
+    def visit_num_oper_expr_rhs(self, node, vc):  # noqa
+        """ returns the number operator and RHS value """
+        oper, _, tok = vc
+        return [oper[0], tok]
+
+    def visit_str_oper_expr_rhs(self, node, vc):  # noqa
+        """ returns the string operator and RHS value """
+        oper, _, tok = vc
+        return [oper[0], tok]
+
     def visit_oper_expr_rhs(self, node, vc):  # noqa
         """ returns the operattor right-hand-side expression list item """
-        oper, _, value_tok = vc
-        return [oper, value_tok]
+        return vc[0]
 
     def visit_column_expr_rhs(self, node, vc):  # noqa
         """ return the 'column' operation right-hand-side expression list item"""
@@ -216,13 +235,13 @@ class _FilterConstructor(NodeVisitor):
         return [col_oper.text, oper, col_name]
 
     def visit_color_expr_rhs(self, node, vc):  # noqa
-        """ return the 'column' operation right-hand-side expression list item"""
-        col_oper, _, oper, _, col_val = vc
-        return [col_oper.text, oper, col_val]
+        """ return the 'column' operation + right-hand-side expression list item"""
+        col_oper, _, oper_val = vc
+        return [col_oper.text, *oper_val]
 
-    def visit_oper(self, node, vc):  # noqa
-        """ converts the grammer operator to an IPF filter operator """
-        return _OPERATORS[node.text]
+    # -------------------------------------------------------------------------
+    #                      Token Expressions
+    # -------------------------------------------------------------------------
 
     def visit_group_tok(self, node, vc):  # noqa
         """ returns the group operator (and, or) value """
@@ -233,22 +252,34 @@ class _FilterConstructor(NodeVisitor):
         vc = vc.pop(0)
 
         if isinstance(vc, RegexNode):
-            # return as number if int-able
-            try:
-                return int(vc.text)
-            except ValueError:
-                return vc.text
+            return vc.text
 
         value_node = vc[0] if len(vc) == 1 else vc[1]
         return value_node.text
 
-    def visit_number(self, node, vc):  # noqa
+    def visit_int_tok(self, node, vc):  # noqa
         """ returns the value as an integer """
         return int(node.text)
 
     def visit_col_name(self, node, vc):  # noqa
         """ returns the column name (str) """
         return node.text
+
+    # -------------------------------------------------------------------------
+    #                      Operator Nodes
+    # -------------------------------------------------------------------------
+
+    def visit_str_oper(self, node, vc):  # noqa
+        """ returns the string operator in IPF API form """
+        return _OPERATORS[node.text]
+
+    def visit_num_oper(self, node, vc):  # noqa
+        """ returns the number operator in IPF API form """
+        return _OPERATORS[node.text]
+
+    def visit_ei_oper(self, node, vc):  # noqa
+        """ returns the equality operator in IPF API form """
+        return _OPERATORS[node.text]
 
     def generic_visit(self, node, visited_children):
         """ pass through for nodes not explicility visited """
