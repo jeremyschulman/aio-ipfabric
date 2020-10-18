@@ -155,7 +155,7 @@ sq              = "'"
 dq              = "\""
 word            = ~r"[a-z0-9\.\/_\-]+"i
 group_tok       = 'and' / 'or'
-oper            = '!=~' / '=~' / '!=' / 'net' / '!~' / '<=' / '>=' / '=' / '~' / '?'  / '<' / '>'
+oper            = '!=~' / '=~' / '!=' / 'net' / '!~' / '<=' / '>=' / '=' / '~' / '?' / '<' / '>'
 cmp_value_tok   = sq_tok / dq_tok / word
 sq_tok          = sq sq_words sq
 dq_tok          = dq dq_words dq
@@ -208,6 +208,13 @@ class _FilterConstructor(NodeVisitor):
     def visit_oper_expr_rhs(self, node, vc):  # noqa
         """ returns the operattor right-hand-side expression list item """
         oper, _, value_tok = vc
+
+        # there are some oeprators that require the value_tok to be strings;
+        # ensure this conversion is forced.
+
+        if oper in ["like", "notlink", "reg", "nreg", "cidr"]:
+            value_tok = str(value_tok)
+
         return [oper, value_tok]
 
     def visit_column_expr_rhs(self, node, vc):  # noqa
