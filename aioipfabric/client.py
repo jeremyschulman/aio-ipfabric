@@ -21,6 +21,7 @@ import csv
 # -----------------------------------------------------------------------------
 
 from aioipfabric.mixins.inventory import IPFInventoryMixin
+from aioipfabric.mixins.tables import IPFTablesMixin
 
 # -----------------------------------------------------------------------------
 # Exports
@@ -36,7 +37,7 @@ __all__ = ["IPFabricClient"]
 # -----------------------------------------------------------------------------
 
 
-class IPFabricClient(IPFInventoryMixin):
+class IPFabricClient(IPFInventoryMixin,IPFTablesMixin):
     """
     An instance IPFabricClient is used to interact with the IP Fabric
     system API via methods that abstract the underlying API calls.
