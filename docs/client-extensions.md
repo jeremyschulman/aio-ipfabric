@@ -27,7 +27,7 @@ approach to using Mixins.  For example:
 
 ````python
 from aioipfabric import IPFabricClient
-from aioipfabric.mixins.configs import IPFConfigsMixin
+from aioipfabric.mixins.mixin_configs import IPFConfigsMixin
 
 class MyClient(IPFConfigsMixin, IPFabricClient):
     pass
@@ -45,7 +45,7 @@ method.
 
 ````python
 from aioipfabric import IPFabricClient
-from aioipfabric.mixins.configs import IPFConfigsMixin
+from aioipfabric.mixins.mixin_configs import IPFConfigsMixin
 
 # create an instance of the client
 
@@ -59,7 +59,7 @@ using the `mixin()` method of the IPFabricClient.
 
 ````python
 from aioipfabric import IPFabricClient
-from aioipfabric.mixins.configs import IPFConfigsMixin
+from aioipfabric.mixins.mixin_configs import IPFConfigsMixin
 
 # create an instance of the client
 
