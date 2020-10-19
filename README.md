@@ -20,6 +20,8 @@ pip install git+https://github.com/jeremyschulman/aio-ipfabric@master#egg=aio-ip
 
 # Quick Start
 
+### Simple test run:
+
 ````python
 import asyncio
 from aioipfabric import IPFabricClient
@@ -51,6 +53,18 @@ loop.run_until_complete(ipf.login())
 # fetch the complete device inventory
 device_list = loop.run_until_complete(ipf.fetch_devices())
 print(f"{len(device_list)} devices present under IPF")
+````
+
+### Getting a table
+
+From the "?" in the table headers, extract the columns and the resource path (listed under API Document / URL)
+This method has been tested on several tables but could have some caveats requiring a specifix mixin.
+
+````python
+columns = ["id","sn","hostname","siteKey","siteName","peer","intName","username","group","time","status"]
+resourcepath= "/tables/security/ipsec"
+
+loop.run_until_complete(ipf.fetch_table(resourcepath=resourcepath,columns=columns))
 ````
 
 ## Environment Variables
