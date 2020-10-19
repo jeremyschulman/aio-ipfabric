@@ -24,16 +24,33 @@ pip install git+https://github.com/jeremyschulman/aio-ipfabric@master#egg=aio-ip
 import asyncio
 from aioipfabric import IPFabricClient
 
+# Used to ignore nagging httpx client warning (keeping client persistent is by design for the moment)
+import warnings
+warnings.filterwarnings('ignore', '.*https://www.python-httpx.org/async/#opening-and-closing-clients.*',)
+
 loop = asyncio.get_event_loop()
 
 # create a client using environment variables (see next section)
 ipf = IPFabricClient()
+
+
+# Example for inline vars definition:
+# URL_BASE_IPFABRIC = "https://xxx"
+# IPFABRIC_USER = "xxx"
+# IPFABRIC_PW = "xxx"
+# ipf = IPFabricClient(
+#     base_url=URL_BASE_IPFABRIC, 
+#     username=IPFABRIC_USER, 
+#     password=IPFABRIC_PW
+# )
+
 
 # login to IP Fabric system
 loop.run_until_complete(ipf.login())
 
 # fetch the complete device inventory
 device_list = loop.run_until_complete(ipf.fetch_devices())
+print(f"{len(device_list)} devices present under IPF")
 ````
 
 ## Environment Variables
