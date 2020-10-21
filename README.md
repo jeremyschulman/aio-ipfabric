@@ -8,7 +8,7 @@ This package contains a Python 3.8 asyncio client for use wih the IP Fabric prod
 
 [![Downloads](https://pepy.tech/badge/aio-ipfabric)](https://pepy.tech/project/aio-ipfabric)
 ![Supported Python Version](https://img.shields.io/pypi/pyversions/aio-ipfabric)
-[![Contributors](https://img.shields.io/github/contributors/jeremyschulman/aio-ipfabric)
+![Contributors](https://img.shields.io/github/contributors/jeremyschulman/aio-ipfabric)
 [![License](https://img.shields.io/github/license/jeremyschulman/aio-ipfabric)](https://github.com/jeremyschulman/aio-ipfabric/blob/main/LICENSE)
 
 
