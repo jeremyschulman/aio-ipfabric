@@ -73,6 +73,7 @@ async def fetch_device_ipaddrs(ipf, request: dict) -> Response:
 async def device_info(hostname: str, **api_options):
 
     async with IPFabricClient() as ipf:
+
         filter_hostname = IPFabricClient.parse_filter(f"hostname = {hostname}")
 
         inventory_task = ipf.fetch_devices(filters=filter_hostname, **api_options)
