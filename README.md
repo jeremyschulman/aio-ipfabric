@@ -39,11 +39,17 @@ loop = asyncio.get_event_loop()
 # create a client using environment variables (see next section)
 ipf = IPFabricClient()
 
+# alternatively create instance with parameters
+# ipf = IPFabricClient(base_url='https://myipfserver.com', username='admin', password='admin12345')
+# ipf = IPFabricClient(base_url='https://myipfserver.com', token='TOKENFROMIPF')
+
 # login to IP Fabric system
 loop.run_until_complete(ipf.login())
 
 # fetch the complete device inventory
 device_list = loop.run_until_complete(ipf.fetch_devices())
+
+loop.run_until_complete(ipf.logout())
 ````
 
 ## Environment Variables
