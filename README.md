@@ -49,6 +49,7 @@ loop.run_until_complete(ipf.login())
 # fetch the complete device inventory
 device_list = loop.run_until_complete(ipf.fetch_devices())
 
+# close asyncio connection, otherwise you will see a warning.
 loop.run_until_complete(ipf.logout())
 ````
 
