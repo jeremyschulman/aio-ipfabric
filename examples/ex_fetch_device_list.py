@@ -7,23 +7,11 @@ import asyncio
 from operator import itemgetter
 from tabulate import tabulate
 
-try:
-    filename = sys.argv[1]
-    device_list = Path(filename)
-    if not device_list.is_file():
-        sys.exit(f"File does not exist: {filename}")
-except KeyError:
-    sys.exit("Missing filename argument")
-
-device_list = device_list.read_text().splitlines()
-
 
 loop = asyncio.get_event_loop()
 
 
-async def run(ipf: IPFabricClient, callback):
-    tasks = list()
-
+async def run(ipf: IPFabricClient, device_list, callback):
     def _done(_task):
         _host = _task.get_name()
         _res = _task.result()
@@ -33,24 +21,39 @@ async def run(ipf: IPFabricClient, callback):
 
         callback(_res[0])
 
-    for host in device_list:
-        task = loop.create_task(
-            ipf.fetch_devices(filters=ipf.parse_filter(f"hostname ~ '{host}'")),
-            name=host,
+    tasks = [
+        (
+            task := loop.create_task(
+                ipf.fetch_devices(filters=ipf.parse_filter(f"hostname ~ '{host}'")),
+                name=host,
+            )
         )
-        task.add_done_callback(_done)
-        tasks.append(task)
+        and task.add_done_callback(_done)
+        or task
+        for host in device_list
+    ]
 
-    for next_done in asyncio.as_completed(tasks):
-        await next_done
+    await asyncio.gather(*tasks)
 
 
-async def demo():
+async def demo(filename):
+
+    try:
+        device_list = Path(filename)
+        if not device_list.is_file():
+            sys.exit(f"File does not exist: {filename}")
+    except KeyError:
+        sys.exit("Missing filename argument")
+
+    device_list = device_list.read_text().splitlines()
+
     fields = ("hostname", "family", "version", "model")
     get_fields = itemgetter(*fields)
     results = list()
 
     async with IPFabricClient() as ipf:
-        await run(ipf, callback=lambda r: results.append(get_fields(r)))
+        await run(
+            ipf, device_list, callback=lambda rec: results.append(get_fields(rec))
+        )
 
     print(tabulate(headers=fields, tabular_data=sorted(results, key=itemgetter(1, 2))))
