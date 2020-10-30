@@ -19,7 +19,7 @@ async def run(ipf: IPFabricClient, device_list, callback):
             print(f"IPF device not found: {_host}")
             return
 
-        callback(_res[0])
+        callback(_host, _res[0])
 
     tasks = [
         (
@@ -38,22 +38,20 @@ async def run(ipf: IPFabricClient, device_list, callback):
 
 async def demo(filename):
 
-    try:
-        device_list = Path(filename)
-        if not device_list.is_file():
-            sys.exit(f"File does not exist: {filename}")
-    except KeyError:
-        sys.exit("Missing filename argument")
+    if not (fp := Path(filename)).is_file():
+        sys.exit(f"File does not exist: {filename}")
 
-    device_list = device_list.read_text().splitlines()
+    device_list = fp.read_text().splitlines()
 
     fields = ("hostname", "family", "version", "model")
     get_fields = itemgetter(*fields)
     results = list()
 
+    def callback(name, rec):
+        print(f"Adding {name}")
+        results.append(get_fields(rec))
+
     async with IPFabricClient() as ipf:
-        await run(
-            ipf, device_list, callback=lambda rec: results.append(get_fields(rec))
-        )
+        await run(ipf, device_list, callback=callback)
 
     print(tabulate(headers=fields, tabular_data=sorted(results, key=itemgetter(1, 2))))
