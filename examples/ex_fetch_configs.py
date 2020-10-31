@@ -4,7 +4,7 @@ from aioipfabric import IPFabricClient
 from aioipfabric.mixins.configs import URIs
 
 
-async def fetch_config(ipf: IPFabricClient, hostname: str):
+async def fetch_most_recent_config(ipf: IPFabricClient, hostname: str):
     """
     Fetch the most recent configuration for the given device with `hostname`.
 
@@ -37,7 +37,8 @@ async def fetch_config(ipf: IPFabricClient, hostname: str):
 
     rec = res[0]
 
-    # using the backup record hash value, retrieve the actual configuration text.
+    # using the backup record hash value, retrieve the actual configuration
+    # text. the call to API GET returns the context as text in the reposne body.
 
     res = await ipf.api.get(
         url=URIs.download_device_config, params=dict(hash=rec["hash"])
@@ -48,7 +49,7 @@ async def fetch_config(ipf: IPFabricClient, hostname: str):
 
 async def demo(hostname: str, show_config=False):
     async with IPFabricClient() as ipf:
-        rec, config_text = await fetch_config(ipf, hostname)
+        rec, config_text = await fetch_most_recent_config(ipf, hostname)
         change_dt = maya.MayaDT(rec["lastChange"] / 1000)
         check_dt = maya.MayaDT(rec["lastCheck"] / 1000)
         print("Last Changed:", change_dt.slang_date(), ",", change_dt.slang_time())
