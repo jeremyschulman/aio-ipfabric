@@ -5,6 +5,28 @@ from aioipfabric.mixins.configs import URIs
 
 
 async def fetch_config(ipf: IPFabricClient, hostname: str):
+    """
+    Fetch the most recent configuration for the given device with `hostname`.
+
+    Parameters
+    ----------
+    ipf: IPFabricClient
+
+    hostname: str
+        The hostname of the device.  Will match using the "like" operator to handle
+        ignore-case.
+
+    Returns
+    -------
+    tuple
+        [0]: dict - the config record that contains the lastChange and lastCheck IPF timestamps
+        [1]: str - the configuration text
+    """
+
+    # first we need to retrieve the most recent config record for this device.
+    # The record contains information about the backup, which includes the
+    # "hash" value that is required to actually retrieve the configuration text.
+
     res = await ipf.fetch_table(
         url=URIs.device_config_refs,
         columns=["sn", "hostname", "lastChange", "lastCheck", "status", "hash"],
@@ -14,6 +36,8 @@ async def fetch_config(ipf: IPFabricClient, hostname: str):
     )
 
     rec = res[0]
+
+    # using the backup record hash value, retrieve the actual configuration text.
 
     res = await ipf.api.get(
         url=URIs.download_device_config, params=dict(hash=rec["hash"])
