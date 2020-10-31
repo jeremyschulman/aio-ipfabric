@@ -5,14 +5,14 @@ from pathlib import Path
 from aioipfabric import IPFabricClient
 import asyncio
 from operator import itemgetter
-from tabulate import tabulate
+from tabulate import tabulate  # noqa: you must install tabulate in your virtualenv
 
 
 loop = asyncio.get_event_loop()
 
 
 async def run(ipf: IPFabricClient, device_list, callback):
-    def _done(_task):
+    def _done(_task: asyncio.Task):
         _host = _task.get_name()
         _res = _task.result()
         if not len(_res):
@@ -21,17 +21,18 @@ async def run(ipf: IPFabricClient, device_list, callback):
 
         callback(_host, _res[0])
 
-    tasks = [
-        (
-            task := loop.create_task(
-                ipf.fetch_devices(filters=ipf.parse_filter(f"hostname ~ '{host}'")),
-                name=host,
-            )
-        )
-        and task.add_done_callback(_done)
-        or task
+    tasks = {
+        [
+            (
+                task := loop.create_task(
+                    ipf.fetch_devices(filters=ipf.parse_filter(f"hostname ~ '{host}'")),
+                    name=host,
+                )
+            ),
+            task.add_done_callback(_done),
+        ][0]
         for host in device_list
-    ]
+    }
 
     await asyncio.gather(*tasks)
 

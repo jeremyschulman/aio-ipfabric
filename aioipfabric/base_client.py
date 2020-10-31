@@ -17,7 +17,7 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
-from typing import Optional, AnyStr, Iterable
+from typing import Optional, AnyStr, Iterable, List, Dict, Union
 from os import environ, getenv
 from dataclasses import dataclass
 from functools import wraps
@@ -68,6 +68,7 @@ def table_api(methcoro):
         columns=None,
         pagination=None,
         sort=None,
+        reports=None,
         request=None,
         return_as="data",
         **kwargs,
@@ -111,6 +112,10 @@ def table_api(methcoro):
             The IPF API sort item.  If not provided, the request['sort'] key is
             not set.
 
+        reports: str
+            A request reports string, generally used when retrieving
+            intent-rule-validation values.
+
         request: dict
             If provided, this dict is the starting defition of the request
             passed to the wrapped coroutine.  If not provided, this decorator
@@ -140,6 +145,12 @@ def table_api(methcoro):
 
         if pagination:
             payload["pagination"] = pagination
+
+        if reports:
+            payload["reports"] = reports
+
+        if sort:
+            payload["sort"] = sort
 
         res = await methcoro(self, request=payload, **kwargs)
 
@@ -264,7 +275,7 @@ class IPFBaseClient(object):
         self.snapshots = res.json()
 
     @table_api
-    async def fetch_table(self, url: str, request: dict) -> Response:
+    async def fetch_table(self, url: str, request: dict) -> Union[Response, List, Dict]:
         """
         This coroutine is used to fetch records from any table, as identified by
         the `url` parameter.  The `requests` dict *must* contain a columns key,
