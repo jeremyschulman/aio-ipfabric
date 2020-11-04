@@ -17,7 +17,7 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
-from typing import Optional, AnyStr, Iterable
+from typing import Optional, AnyStr, Iterable, List, Dict, Union
 from os import environ, getenv
 from dataclasses import dataclass
 from functools import wraps
@@ -68,6 +68,7 @@ def table_api(methcoro):
         columns=None,
         pagination=None,
         sort=None,
+        reports=None,
         request=None,
         return_as="data",
         **kwargs,
@@ -111,6 +112,10 @@ def table_api(methcoro):
             The IPF API sort item.  If not provided, the request['sort'] key is
             not set.
 
+        reports: str
+            A request reports string, generally used when retrieving
+            intent-rule-validation values.
+
         request: dict
             If provided, this dict is the starting defition of the request
             passed to the wrapped coroutine.  If not provided, this decorator
@@ -140,6 +145,12 @@ def table_api(methcoro):
 
         if pagination:
             payload["pagination"] = pagination
+
+        if reports:
+            payload["reports"] = reports
+
+        if sort:
+            payload["sort"] = sort
 
         res = await methcoro(self, request=payload, **kwargs)
 
@@ -245,12 +256,20 @@ class IPFBaseClient(object):
         of current snapshots, and set the `active_snapshot` attribute to the latest
         snapshot.
         """
+
+        if self.api.is_closed:
+            self.api = IPFSession(base_url=str(self.api.base_url), token=self.api.token)
+
         await self.api.authenticate()
+
+        # capture the IPF version value
         res = await self.api.get("/os/version")
         res.raise_for_status()
         self.version = res.json()["version"]
-        await self.fetch_snapshots()
 
+        # fetch the snapshot catalog and default the active to the most recent one.
+        # TODO: might want to only fetch the "latest" snapshot vs. all.
+        await self.fetch_snapshots()
         self.active_snapshot = self.snapshots[0]["id"]
 
     async def logout(self):
@@ -264,7 +283,7 @@ class IPFBaseClient(object):
         self.snapshots = res.json()
 
     @table_api
-    async def fetch_table(self, url: str, request: dict) -> Response:
+    async def fetch_table(self, url: str, request: dict) -> Union[Response, List, Dict]:
         """
         This coroutine is used to fetch records from any table, as identified by
         the `url` parameter.  The `requests` dict *must* contain a columns key,
@@ -305,7 +324,9 @@ class IPFBaseClient(object):
         return f"{cls_name}: {base_url}"
 
     # -------------------------------------------------------------------------
+    #
     #                      ASYNC CONTEXT MANAGER METHODS
+    #
     # -------------------------------------------------------------------------
 
     async def __aenter__(self):
@@ -318,7 +339,9 @@ class IPFBaseClient(object):
         await self.logout()
 
     # -------------------------------------------------------------------------
+    #
     #                             STATIC METHODS
+    #
     # -------------------------------------------------------------------------
 
     parse_filter = staticmethod(parse_filter)

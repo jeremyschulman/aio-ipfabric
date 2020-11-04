@@ -34,7 +34,7 @@ from aioipfabric.base_client import IPFBaseClient
 # Exports
 # -----------------------------------------------------------------------------
 
-__all__ = ["IPFConfigsMixin"]
+__all__ = ["IPFConfigsMixin", "URIs"]
 
 
 # -----------------------------------------------------------------------------
