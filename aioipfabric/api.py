@@ -86,11 +86,28 @@ class IPFSession(AsyncClient):
                 username=username, password=password
             )
         elif token:
-            self.__init_auth = self.__refresh_access_token(token)
+            self.__init_auth = self.refresh_token(token)
         else:
             raise RuntimeError("MISSING required token or (username, password)")
 
         self.headers["Content-Type"] = "application/json"
+
+    # -------------------------------------------------------------------------
+    #
+    #                             Properties
+    #
+    # -------------------------------------------------------------------------
+
+    @property
+    def token(self):
+        """ return the Refresh Token for later use/storage """
+        return self.__refresh_token
+
+    # -------------------------------------------------------------------------
+    #
+    #                             Public Methods
+    #
+    # -------------------------------------------------------------------------
 
     async def authenticate(self):
         """
@@ -98,16 +115,18 @@ class IPFSession(AsyncClient):
         token.  This coroutine can be used for both the initial login process as well
         as the token refresh process.
         """
+
+        # the first time this method is called use the coroutine as selected in
+        # the __init__ method based on the provided credentials. Any subsequent
+        # call to `authenticate` will use `refresh_token`.  The code below uses
+        # the try/except catching the RuntimeError to detected the "first use"
+        # vs. subsequent uses.
+
         try:
             await self.__init_auth
-        except RuntimeError:
-            # A runtime error will occur if the __init_auth has already been awaited.
-            await self.refresh_token()
 
-    @property
-    def token(self):
-        """ return the Refresh Token for later use/storage """
-        return self.__refresh_token
+        except RuntimeError:
+            await self.refresh_token(self.__refresh_token)
 
     async def refresh_token(self, token: Optional[str] = None):
         """ using the refresh token, obtain a new access token """
@@ -118,6 +137,12 @@ class IPFSession(AsyncClient):
         assert self.__refresh_token is not None
         await self.__refresh_access_token(self.__refresh_token)
         self.headers["Authorization"] = f"Bearer {self.__access_token}"
+
+    # -------------------------------------------------------------------------
+    #
+    #                             Private Methods
+    #
+    # -------------------------------------------------------------------------
 
     async def __refresh_access_token(self, refresh_token):
         """ underlying API call to update the access token """

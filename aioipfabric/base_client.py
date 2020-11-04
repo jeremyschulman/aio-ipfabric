@@ -256,12 +256,20 @@ class IPFBaseClient(object):
         of current snapshots, and set the `active_snapshot` attribute to the latest
         snapshot.
         """
+
+        if self.api.is_closed:
+            self.api = IPFSession(base_url=str(self.api.base_url), token=self.api.token)
+
         await self.api.authenticate()
+
+        # capture the IPF version value
         res = await self.api.get("/os/version")
         res.raise_for_status()
         self.version = res.json()["version"]
-        await self.fetch_snapshots()
 
+        # fetch the snapshot catalog and default the active to the most recent one.
+        # TODO: might want to only fetch the "latest" snapshot vs. all.
+        await self.fetch_snapshots()
         self.active_snapshot = self.snapshots[0]["id"]
 
     async def logout(self):
@@ -316,7 +324,9 @@ class IPFBaseClient(object):
         return f"{cls_name}: {base_url}"
 
     # -------------------------------------------------------------------------
+    #
     #                      ASYNC CONTEXT MANAGER METHODS
+    #
     # -------------------------------------------------------------------------
 
     async def __aenter__(self):
@@ -329,7 +339,9 @@ class IPFBaseClient(object):
         await self.logout()
 
     # -------------------------------------------------------------------------
+    #
     #                             STATIC METHODS
+    #
     # -------------------------------------------------------------------------
 
     parse_filter = staticmethod(parse_filter)
