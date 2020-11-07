@@ -47,6 +47,7 @@ class URIs:
     device_parts = "/tables/inventory/pn"
     managed_ipaddrs = "/tables/addressing/managed-devs"
     snapshots = "/snapshots"
+    interfaces = "/tables/inventory/interfaces"
 
 
 DEFAULT_PARTS_COLUMNS = [
@@ -61,6 +62,30 @@ DEFAULT_PARTS_COLUMNS = [
     "vendor",
     "platform",
     "model",
+]
+
+DEFAULT_INTERFACES_COLUMNS = [
+    "hostname",
+    "intName",
+    "dscr",
+    "mac",
+    "media",
+    "mtu",
+]
+
+DEFAULT_INTERFACES_COLUMNS_EXTENDED = [
+    "hostname",
+    "intName",
+    "l1",
+    "l2",
+    "reason",
+    "dscr",
+    "mac",
+    "duplex",
+    "speed",
+    "media",
+    "errDisabled",
+    "mtu",
 ]
 
 
@@ -161,3 +186,28 @@ class IPFInventoryMixin(IPFBaseClient):
         """
         request.setdefault("columns", DEFAULT_PARTS_COLUMNS)
         return await self.api.post(URIs.device_parts, json=request)
+
+    @table_api
+    async def fetch_interfaces(self, request: dict, extended=False) -> Response:
+        """
+        Fetch <Inventory | Interfaces | Interfaces (total)> table records.
+
+        Parameters
+        ----------
+        request: dict
+            The API body request payload, prepared by the table_api decorator
+
+        extended: Boolean
+            If true, give back in addition duplex/speed/errdisabled information
+
+        Returns
+        -------
+        The HTTPx response, which will be post-processed by the table_api decorator.
+        """
+        request.setdefault(
+            "columns",
+            DEFAULT_INTERFACES_COLUMNS_EXTENDED
+            if extended
+            else DEFAULT_INTERFACES_COLUMNS,
+        )
+        return await self.api.post(URIs.interfaces, json=request)
