@@ -54,3 +54,9 @@ class TableFields(str, Enum):
     pagination = "pagination"
     snapshot = "snapshot"
     reports = "reports"
+    sort = "sort"
+
+
+class TableSort(str, Enum):
+    ascending = "asc"
+    descending = "desc"

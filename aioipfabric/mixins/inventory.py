@@ -90,7 +90,6 @@ class IPFInventoryMixin(IPFBaseClient):
         default_columns = [
             "sn",
             "hostname",
-            "siteKey",
             "siteName",
             "loginIp",
             "loginType",

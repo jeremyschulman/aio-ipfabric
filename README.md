@@ -6,9 +6,16 @@ This package contains a Python 3.8 asyncio client for use wih the IP Fabric prod
    * About IP Fabric API: https://docs.ipfabric.io/api/
 
 
-# Installation
+[![Downloads](https://pepy.tech/badge/aio-ipfabric)](https://pepy.tech/project/aio-ipfabric)
+![Supported Python Version](https://img.shields.io/pypi/pyversions/aio-ipfabric)
+![Contributors](https://img.shields.io/github/contributors/jeremyschulman/aio-ipfabric)
+[![License](https://img.shields.io/github/license/jeremyschulman/aio-ipfabric)](https://github.com/jeremyschulman/aio-ipfabric/blob/main/LICENSE)
 
-PyPi installation
+
+# Installating aio-ipfabric and supported versions
+
+aio-ipfabric is available on [PyPI](https://pypi.org/project/aio-ipfabric/):
+
 ```shell script
 pip install aio-ipfabric
 ```
@@ -17,6 +24,9 @@ Direct installation
 ```shell script
 pip install git+https://github.com/jeremyschulman/aio-ipfabric@master#egg=aio-ipfabric
 ```
+
+Requests officially supports Python 3.8+.
+
 
 # Quick Start
 
@@ -29,11 +39,18 @@ loop = asyncio.get_event_loop()
 # create a client using environment variables (see next section)
 ipf = IPFabricClient()
 
+# alternatively create instance with parameters
+# ipf = IPFabricClient(base_url='https://myipfserver.com', username='admin', password='admin12345')
+# ipf = IPFabricClient(base_url='https://myipfserver.com', token='TOKENFROMIPF')
+
 # login to IP Fabric system
 loop.run_until_complete(ipf.login())
 
 # fetch the complete device inventory
 device_list = loop.run_until_complete(ipf.fetch_devices())
+
+# close asyncio connection, otherwise you will see a warning.
+loop.run_until_complete(ipf.logout())
 ````
 
 ## Environment Variables
