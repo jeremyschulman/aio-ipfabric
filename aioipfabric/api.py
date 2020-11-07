@@ -24,7 +24,13 @@ from dataclasses import dataclass
 # Public Imports
 # -----------------------------------------------------------------------------
 
-from httpx import AsyncClient
+from httpx import AsyncClient, Timeout
+
+# -----------------------------------------------------------------------------
+# Private Imports
+# -----------------------------------------------------------------------------
+
+from .consts import DEFAULT_TIMEOUT
 
 # -----------------------------------------------------------------------------
 # Exports
@@ -58,7 +64,14 @@ class IPFSession(AsyncClient):
     turns makes the api accessbile to any IPFabricClient instances.
     """
 
-    def __init__(self, base_url, token=None, username=None, password=None):
+    def __init__(
+        self,
+        base_url,
+        token=None,
+        username=None,
+        password=None,
+        timeout=DEFAULT_TIMEOUT,
+    ):
         """
         Initialize the asyncio client session to the IP Fabric API
 
@@ -76,7 +89,10 @@ class IPFSession(AsyncClient):
         password: str
             The login password
         """
-        super().__init__(base_url=base_url, verify=False)
+
+        timeout_httpx = Timeout(timeout=timeout) # pool parameter not setup by default
+        
+        super().__init__(base_url=base_url, verify=False, timeout=timeout_httpx)
 
         self.__refresh_token = token
         self.__access_token = None

@@ -45,6 +45,8 @@ COLOR_BLUE = 10
 COLOR_YELLOW = 20
 COLOR_RED = 30
 
+DEFAULT_TIMEOUT = 60
+
 
 class TableFields(str, Enum):
     """ identifies the API Table request body fields """
