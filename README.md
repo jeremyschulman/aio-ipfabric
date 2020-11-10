@@ -1,6 +1,6 @@
 # Python Asyncio Client for IP Fabric
 
-This package contains a Python 3.8 asyncio client for use wih the IP Fabric product.
+This package contains a Python 3.8+ asyncio client for use wih the IP Fabric product.
 
    * About IP Fabric: https://ipfabric.io/
    * About IP Fabric API: https://docs.ipfabric.io/api/
