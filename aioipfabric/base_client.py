@@ -256,8 +256,7 @@ class IPFBaseClient(object):
         of current snapshots, and set the `active_snapshot` attribute to the latest
         snapshot.
         """
-
-        if self.api.is_closed:
+        if self.api.token and self.api.is_closed:
             self.api = IPFSession(base_url=str(self.api.base_url), token=self.api.token)
 
         await self.api.authenticate()

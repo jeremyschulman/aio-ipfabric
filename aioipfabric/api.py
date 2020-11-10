@@ -19,6 +19,7 @@
 
 from typing import Optional
 from dataclasses import dataclass
+import asyncio
 
 # -----------------------------------------------------------------------------
 # Public Imports
@@ -58,6 +59,8 @@ class IPFSession(AsyncClient):
     turns makes the api accessbile to any IPFabricClient instances.
     """
 
+    API_THROTTLE = 100
+
     def __init__(self, base_url, token=None, username=None, password=None):
         """
         Initialize the asyncio client session to the IP Fabric API
@@ -77,6 +80,8 @@ class IPFSession(AsyncClient):
             The login password
         """
         super().__init__(base_url=base_url, verify=False)
+
+        self.__sema4 = asyncio.Semaphore(self.API_THROTTLE)
 
         self.__refresh_token = token
         self.__access_token = None
@@ -161,3 +166,13 @@ class IPFSession(AsyncClient):
         self.__access_token = body["accessToken"]
         self.__refresh_token = body["refreshToken"]
         self.headers["Authorization"] = f"Bearer {self.__access_token}"
+
+    # -------------------------------------------------------------------------
+    #
+    #                             Override Methods
+    #
+    # -------------------------------------------------------------------------
+
+    async def request(self, *vargs, **kwargs):
+        async with self.__sema4:
+            return await super(IPFSession, self).request(*vargs, **kwargs)
