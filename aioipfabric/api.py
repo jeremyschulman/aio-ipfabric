@@ -60,8 +60,12 @@ class IPFSession(AsyncClient):
     """
 
     API_THROTTLE = 100
+    API_DEFAULT_TIMEOUT = 30
+    API_HEADER_TOKEN = "X-API-Token"
 
-    def __init__(self, base_url, token=None, username=None, password=None):
+    def __init__(
+        self, base_url, token=None, username=None, password=None, **clientopts
+    ):
         """
         Initialize the asyncio client session to the IP Fabric API
 
@@ -71,27 +75,42 @@ class IPFSession(AsyncClient):
             The base URL of the IP fabric system
 
         token: str
-            The refresh token
+            The API Token, requires v3.7
 
         username: str
             The login user-name
 
         password: str
             The login password
+
+        Other Parameters
+        ----------------
+        Any additional `clientopts` are passed to the httpx.AsyncClient instance
+        init as-is so that the Caller has further controls.  The `clientopts`
+        may also include an optional key `API_THROTTLE` that is used to
+        semaphore protect the number of concurrent requests. If this option is
+        not provided, then the class default value is used.
         """
-        super().__init__(base_url=base_url, verify=False)
+        api_throttle = clientopts.pop("API_THROTTLE", None)
 
-        self.__sema4 = asyncio.Semaphore(self.API_THROTTLE)
+        super().__init__(
+            base_url=base_url,
+            timeout=clientopts.pop("timeout", self.API_DEFAULT_TIMEOUT),
+            verify=False,
+            **clientopts,
+        )
 
-        self.__refresh_token = token
+        self.__sema4 = asyncio.Semaphore(api_throttle or self.API_THROTTLE)
+        self.__api_token = token
         self.__access_token = None
+        self.__refresh_token = None
 
-        if all((username, password)):
+        if self.__api_token:
+            self.headers[self.API_HEADER_TOKEN] = self.__api_token
+        elif all((username, password)):
             self.__init_auth = self.__auth_userpass(
                 username=username, password=password
             )
-        elif token:
-            self.__init_auth = self.refresh_token(token)
         else:
             raise RuntimeError("MISSING required token or (username, password)")
 
@@ -120,6 +139,11 @@ class IPFSession(AsyncClient):
         token.  This coroutine can be used for both the initial login process as well
         as the token refresh process.
         """
+
+        # If using the API Token approach, there is nothing to do.
+
+        if self.__api_token:
+            return
 
         # the first time this method is called use the coroutine as selected in
         # the __init__ method based on the provided credentials. Any subsequent
