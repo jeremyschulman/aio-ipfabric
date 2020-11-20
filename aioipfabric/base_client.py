@@ -193,6 +193,7 @@ class IPFBaseClient(object):
         token: Optional[AnyStr] = None,
         username: Optional[AnyStr] = None,
         password: Optional[AnyStr] = None,
+        **clientopts,
     ):
         """
         Create an IP Fabric Client instance
@@ -210,8 +211,13 @@ class IPFBaseClient(object):
             The IPF login password value
 
         token : str
-            The IP Fabric Refresh Token that will be used to create the Access
-            Token required by API calls.
+            The IP Fabric API Token created from the Settings configuration;
+            requires IP Fabric v3.7+
+
+        Other Parameters
+        ----------------
+        `clientopts` are passed AS-IS to the API session so that the
+        httpx.AsyncClient can be configured as desired.
 
         Notes
         -----
@@ -224,19 +230,12 @@ class IPFBaseClient(object):
         username = username or getenv(ENV.username)
         password = password or getenv(ENV.password)
 
-        # ensure that the base_url ends with a slash since we will be using
-        # httpx with base_url. there is a known _requirement_ for
-        # ends-with-slash which if not in place causes issues.
-        # TODO: perhaps this issue has been fixed in latter versions of httpx; not
-        #       seeing the same issue with httpx > 0.14
-        # if not base_url.endswith("/"):
-        #     base_url += "/"
-
         self.api = IPFSession(
             base_url=base_url + API_VER,
             token=token,
             username=username,
             password=password,
+            **clientopts,
         )
 
         # dynamically add any Mixins at the time of client creation.  This
@@ -260,6 +259,13 @@ class IPFBaseClient(object):
             self.api = IPFSession(base_url=str(self.api.base_url), token=self.api.token)
 
         await self.api.authenticate()
+
+        # if the `version` attribute is set this means that this client has
+        # connected to the IPF system before, and we do not need to re-fetch the
+        # version and snapshot data.
+
+        if self.version:
+            return
 
         # capture the IPF version value
         res = await self.api.get("/os/version")
