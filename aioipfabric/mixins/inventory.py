@@ -89,6 +89,7 @@ class IPFInventoryMixin(IPFBaseClient):
 
         default_columns = [
             "sn",
+            "snHw",
             "hostname",
             "siteName",
             "loginIp",
@@ -117,7 +118,16 @@ class IPFInventoryMixin(IPFBaseClient):
         -------
         The HTTPx response, which will be post-processed by the table_api decorator.
         """
-        default_columns = ["sn", "hostname", "intName", "siteName", "mac", "ip", "net"]
+        default_columns = [
+            "sn",
+            "snHw",
+            "hostname",
+            "intName",
+            "siteName",
+            "mac",
+            "ip",
+            "net",
+        ]
 
         request.setdefault("columns", default_columns)
 

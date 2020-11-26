@@ -52,6 +52,7 @@ class URIs:
 
     device_config_refs = "tables/management/configuration"
     download_device_config = "tables/management/configuration/download"
+    trigger_backup = "discovery/trigger-config-backup"
 
 
 class IPFConfigsMixin(IPFBaseClient):
@@ -270,3 +271,26 @@ class IPFConfigsMixin(IPFBaseClient):
         # processing.
 
         return list(fetch_tasks.values())
+
+    async def trigger_backup(self, **options):
+        """
+        This coroutine will cause IP Fabric to trigger a backup process for the
+        given device as specified in `options`.  The Caller can provide either
+        the management IP address or serial-number of the device (as obtained
+        from the Inventory table!).
+
+        Other Parameters
+        ----------
+        ip: str - The device management IP address
+        sn: str - The device serial-number
+
+        Returns
+        -------
+        None - there is no payload response to the trigger action.
+
+        Raises
+        ------
+        httpx.Exception
+        """
+        res = await self.api.post(URIs.trigger_backup, json=options)
+        res.raise_for_status()
