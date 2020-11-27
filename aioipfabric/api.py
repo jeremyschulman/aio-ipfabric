@@ -125,7 +125,7 @@ class IPFSession(AsyncClient):
     @property
     def token(self):
         """ return the Refresh Token for later use/storage """
-        return self.__refresh_token
+        return self.__api_token or self.__refresh_token
 
     # -------------------------------------------------------------------------
     #

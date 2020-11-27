@@ -52,9 +52,9 @@ class IPFDiagramE2EMixin(IPFBaseClient):
         src_ip: str,
         dst_ip: Optional[str] = "0.0.0.0",
         proto: Optional[str] = "tcp",
-        src_port: Optional[Union[str, int]] = 0,
-        dst_port: Optional[Union[str, int]] = 0,
-        check_rpf: Optional[bool] = False,
+        src_port: Optional[Union[str, int]] = 10_000,
+        dst_port: Optional[Union[str, int]] = 10_000,
+        check_rpf: Optional[bool] = True,
         check_asymmetric: Optional[bool] = False,
     ) -> Dict:
         """
