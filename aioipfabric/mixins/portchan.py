@@ -70,7 +70,7 @@ class PortChannelMemberStates(str, Enum):
 _re_portmember = re.compile(r"(?P<intName>\S+)\((?P<state>\w+)\)")
 
 
-class IPFPortChannels(IPFBaseClient):
+class IPFPortChannelsMixin(IPFBaseClient):
     """ Mixin for Port-Channels """
 
     @table_api
@@ -111,4 +111,4 @@ class IPFPortChannels(IPFBaseClient):
     @staticmethod
     def xf_portchannel_members(records):
         for rec in records:
-            IPFPortChannels.xfrec_portchannel_members(rec)
+            IPFPortChannelsMixin.xfrec_portchannel_members(rec)

@@ -136,10 +136,11 @@ FILTER_GRAMMER = r"""
 # Expression parts
 #
 filter_expr         = group_expr / simple_expr
-group_expr_list     = group_expr ws ("," ws group_expr)+
-group_expr          = group_tok ws "(" ws expr_list ws ")"
-expr_list           = simple_expr_list / group_expr_list
-simple_expr_list    = simple_expr ws ("," ws simple_expr)+
+group_expr          = group_tok ws "(" ws group_list_expr ws ")"
+group_list_item     = group_expr / simple_expr
+group_list_expr     = group_list_item ws ("," ws group_list_item)+
+#
+#
 simple_expr         = col_name ws (column_expr_rhs / color_expr_rhs / oper_expr_rhs)
 num_oper_expr_rhs   = (num_oper / ei_oper) ws int_tok
 str_oper_expr_rhs   = (str_oper / ei_oper) ws cmp_value_tok
@@ -155,7 +156,7 @@ dq_words        = ~"[^\"]+"
 ws              = ~"\s*"
 sq              = "'"
 dq              = "\""
-word            = ~r"[a-z0-9\.\/_\-]+"i
+word            = ~r"[\\a-z0-9\.\/_\-]+"i
 int_tok         = ~"\d+"
 group_tok       = 'and' / 'or'
 str_oper        = '!=~' / '=~' / 'net' / '!~' / '~' / '?'
@@ -165,6 +166,13 @@ cmp_value_tok   = sq_tok / dq_tok / word
 sq_tok          = sq sq_words sq
 dq_tok          = dq dq_words dq
 """
+
+# prior-DEPRECIATED, but here for reference just in case.
+# word            = ~r"[a-z0-9\.\/_\-]+"i
+# group_expr_list     = group_expr ws ("," ws group_expr)+
+# expr_list           = group_expr / simple_expr_list
+# group_expr_list     = group_expr ws ("," ws expr_list)+
+# simple_expr_list    = simple_expr ws ("," ws simple_expr)+
 
 
 _grammer = Grammar(FILTER_GRAMMER)
@@ -178,7 +186,7 @@ class _FilterConstructor(NodeVisitor):
         group_tok, _, _, _, filter_list, *_ = vc
         return {group_tok: filter_list}
 
-    def visit_group_expr_list(self, node, vc):  # noqa
+    def visit_group_list_expr(self, node, vc):  # noqa
         """ create a list of group_expr items """
         expr_1, _, expr_n = vc
         expr_list = [
@@ -187,17 +195,8 @@ class _FilterConstructor(NodeVisitor):
         ]
         return expr_list
 
-    def visit_expr_list(self, node, vc):  # noqa
-        """ create an expr_list item """
+    def visit_group_list_item(self, node, vc):  # noqa
         return vc[0]
-
-    def visit_simple_expr_list(self, node, vc):  # noqa
-        """ return a list of filter dictionaries """
-        expr_1, _, expr_n = vc
-        return [
-            expr_1,
-            *(expr for expr in chain.from_iterable(expr_n) if isinstance(expr, dict)),
-        ]
 
     def visit_simple_expr(self, node, vc):  # noqa
         """ return a filter dictionary """

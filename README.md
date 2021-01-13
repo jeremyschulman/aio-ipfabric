@@ -61,9 +61,9 @@ your program:
    * `IPF_ADDR` - IP Fabric server URL, for example "https://my-ipfabric-server.com/"
    * `IPF_USERNAME` - Login username
    * `IPF_PASSWORD` - Login password
-   * `IPF_TOKEN` - A refresh token that can be used to obtain an access token
+   * `IPF_TOKEN` - A persistent API token
 
-You can use either the login credentials or the refresh token to login.
+You can use either the login credentials or the token to login.
 
 If you prefer not to use environment variables, the call to `IPFabricClient()` accepts
 parameters; refer to the `help(IPFabricClient)` for details.
