@@ -1,2 +1,3 @@
 httpx
 parsimonious
+tenacity

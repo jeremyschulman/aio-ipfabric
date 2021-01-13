@@ -246,8 +246,20 @@ class IPFBaseClient(object):
             self.mixin(*mixin_classes)
 
         self.snapshots = None
-        self.active_snapshot = None
+        self._active_snapshot = None
         self.version = None  # the IPF product version
+
+    @property
+    def active_snapshot(self):
+        return self._active_snapshot
+
+    @active_snapshot.setter
+    def active_snapshot(self, name):
+        if (
+            s_id := next((i["id"] for i in self.snapshots if i["name"] == name), None)
+        ) is None:
+            raise ValueError(name)
+        self._active_snapshot = s_id
 
     async def login(self):
         """
@@ -275,7 +287,7 @@ class IPFBaseClient(object):
         # fetch the snapshot catalog and default the active to the most recent one.
         # TODO: might want to only fetch the "latest" snapshot vs. all.
         await self.fetch_snapshots()
-        self.active_snapshot = self.snapshots[0]["id"]
+        self._active_snapshot = self.snapshots[0]["id"]
 
     async def logout(self):
         """ close the async connection """

@@ -26,6 +26,7 @@ import asyncio
 # -----------------------------------------------------------------------------
 
 from httpx import AsyncClient
+from tenacity import retry, wait_exponential
 
 # -----------------------------------------------------------------------------
 # Exports
@@ -199,4 +200,12 @@ class IPFSession(AsyncClient):
 
     async def request(self, *vargs, **kwargs):
         async with self.__sema4:
-            return await super(IPFSession, self).request(*vargs, **kwargs)
+
+            @retry(wait=wait_exponential(multiplier=1, min=4, max=10))
+            async def _do_rqst():
+                res = await super(IPFSession, self).request(*vargs, **kwargs)
+                if res.status_code == 429:
+                    res.raise_for_status()
+                return res
+
+            return await _do_rqst()
