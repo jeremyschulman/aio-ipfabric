@@ -40,7 +40,7 @@ async def get_table(**options):
     Coroutine used to fetch the data from IP Fabric and either store to file or
     display to console.
     """
-    args = dict(url="/tables{options['table']}", columns=options["columns"])
+    args = dict(url=f"/tables{options['table']}", columns=options["columns"])
 
     if (fexpr := options["filter"]) is not None:
         args["filters"] = IPFabricClient.parse_filter(fexpr)
@@ -54,7 +54,7 @@ async def get_table(**options):
             return
 
     if (save_file := options["save_file"]) is not None:
-        print(f"SAVE: {save_file.name}")
+        print(f"SAVE: {save_file.name}, {len(records)} records.")
         json.dump(records, save_file, indent=3)
         return
 
