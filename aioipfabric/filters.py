@@ -121,8 +121,10 @@ _OPERATORS = MappingProxyType(
         "!~": "notlike",  # string does not contain
         "=~": "reg",  # match regular expression
         "!=~": "nreg",  # does not match regular expression
-        "?": "empty",  # column is empty, provided rhs-value is either "true" or "false"
+        "?": "empty",  # column is not-empty, provided rhs-value is either "true" or "false"
+        "empty": "empty",  # column is empty, provided rhs-value is either "true" or "false"
         "net": "cidr",  # value match using IP CIDR value
+        "ip": "ip",  # value match using the 'ip' comparitor for routing purposes
         "<": "lt",  # less than
         "<=": "lte",  # less than or equal to
         ">": "gt",  # greater than
@@ -159,9 +161,9 @@ dq              = "\""
 word            = ~r"[\\a-z0-9\.\/_\-]+"i
 int_tok         = ~"\d+"
 group_tok       = 'and' / 'or'
-str_oper        = '!=~' / '=~' / 'net' / '!~' / '~' / '?'
+str_oper        = '!=~' / '=~' / 'net' / 'ip' / '!~' / '~' / '?'
 num_oper        =  '<=' / '>=' / '<' / '>'
-ei_oper         = '!=' / '='
+ei_oper         = '!=' / '=' / 'empty'
 cmp_value_tok   = sq_tok / dq_tok / word
 sq_tok          = sq sq_words sq
 dq_tok          = dq dq_words dq
