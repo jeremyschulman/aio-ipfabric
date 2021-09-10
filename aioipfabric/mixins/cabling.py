@@ -1,4 +1,4 @@
-#  Copyright 2020 Jeremy Schulman
+#  Copyright 2021 Jeremy Schulman
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -18,45 +18,40 @@
 # -----------------------------------------------------------------------------
 
 from dataclasses import dataclass
-from enum import Enum
 
 # -----------------------------------------------------------------------------
-#
-#                                    CODE BEGINS
-#
+# Public Imports
 # -----------------------------------------------------------------------------
+
+from httpx import Response
+
+# -----------------------------------------------------------------------------
+# Private Imports
+# -----------------------------------------------------------------------------
+
+from aioipfabric.base_client import IPFBaseClient, table_api
 
 
 @dataclass
-class ENV:
-    """identifies enviornment variables used"""
+class URIs:
+    """identifies API URL endpoings used"""
 
-    addr = "IPF_ADDR"
-    username = "IPF_USERNAME"
-    password = "IPF_PASSWORD"
-    token = "IPF_TOKEN"
+    neighbors = "/tables/neighbors/all"
 
 
-API_VER = "/api/v1/"
+class IPFCablingMixin(IPFBaseClient):
+    @table_api
+    async def fetch_cabling(self, request: dict) -> Response:
+        """Fetch the CDP/LLDP 'cabling' information"""
 
+        columns = [
+            "localHost",
+            "localInt",
+            "siteName",
+            "remoteHost",
+            "remoteIp",
+            "remoteInt",
+        ]
 
-COLOR_GREEN = 0
-COLOR_BLUE = 10
-COLOR_YELLOW = 20
-COLOR_RED = 30
-
-
-class TableFields(str, Enum):
-    """identifies the API Table request body fields"""
-
-    columns = "columns"
-    filters = "filters"
-    pagination = "pagination"
-    snapshot = "snapshot"
-    reports = "reports"
-    sort = "sort"
-
-
-class TableSort(str, Enum):
-    ascending = "asc"
-    descending = "desc"
+        request.setdefault("columns", columns)
+        return await self.api.post(URIs.neighbors, json=request)

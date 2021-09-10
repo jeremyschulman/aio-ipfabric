@@ -121,7 +121,7 @@ def device_info(ipf: IPFabricClient, hostname: str, **api_options) -> Coroutine:
 
 
 async def fetch_site_devices(ipf: IPFabricClient, site: str) -> List:
-    """ return a list of hostnames in the give site """
+    """return a list of hostnames in the give site"""
     request = {
         TableFields.snapshot: ipf.active_snapshot,
         TableFields.columns: ["hostname"],

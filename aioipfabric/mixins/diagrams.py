@@ -39,13 +39,13 @@ from aioipfabric.base_client import IPFBaseClient
 
 @dataclass
 class URIs:
-    """ identifies API URL endpoints used"""
+    """identifies API URL endpoints used"""
 
     end_to_end_path = "graph/end-to-end-path"
 
 
 class IPFDiagramE2EMixin(IPFBaseClient):
-    """ Mixin for End-to-End Path query """
+    """Mixin for End-to-End Path query"""
 
     async def end_to_end_path(
         self,

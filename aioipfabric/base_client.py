@@ -52,13 +52,13 @@ __all__ = ["IPFBaseClient", "table_api"]
 
 @dataclass
 class URIs:
-    """ identifies API URL endpoings used"""
+    """identifies API URL endpoings used"""
 
     snapshots = "/snapshots"
 
 
 def table_api(methcoro):
-    """ Method decorator for all Table related APIs """
+    """Method decorator for all Table related APIs"""
 
     @wraps(methcoro)
     async def wrapper(
@@ -178,7 +178,7 @@ class IPFBaseClient(object):
 
     @dataclass
     class ENV:
-        """ identifies enviornment variables used """
+        """identifies enviornment variables used"""
 
         addr = "IPF_ADDR"
         username = "IPF_USERNAME"
@@ -290,11 +290,11 @@ class IPFBaseClient(object):
         self._active_snapshot = self.snapshots[0]["id"]
 
     async def logout(self):
-        """ close the async connection """
+        """close the async connection"""
         await self.api.aclose()
 
     async def fetch_snapshots(self) -> None:
-        """ coroutine to retrieve all known snapshots, returns List[dict] records """
+        """coroutine to retrieve all known snapshots, returns List[dict] records"""
         res = await self.api.get(URIs.snapshots)
         res.raise_for_status()
         self.snapshots = res.json()
@@ -335,7 +335,7 @@ class IPFBaseClient(object):
         self.__class__ = type(self.__class__.__name__, (self.__class__, *mixin_cls), {})
 
     def __repr__(self) -> Iterable[str]:
-        """ override the default repr to show the IPF system base URL """
+        """override the default repr to show the IPF system base URL"""
         cls_name = self.__class__.__name__
         base_url = self.api.base_url
         return f"{cls_name}: {base_url}"
@@ -347,12 +347,12 @@ class IPFBaseClient(object):
     # -------------------------------------------------------------------------
 
     async def __aenter__(self):
-        """ login and return instance """
+        """login and return instance"""
         await self.login()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """ close the http async api instance """
+        """close the http async api instance"""
         await self.logout()
 
     # -------------------------------------------------------------------------

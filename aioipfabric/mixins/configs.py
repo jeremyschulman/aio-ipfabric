@@ -48,7 +48,7 @@ _LOG = logging.getLogger(aioipfabric.__package__)
 
 @dataclass
 class URIs:
-    """ API endpoints """
+    """API endpoints"""
 
     device_config_refs = "tables/management/configuration"
     download_device_config = "tables/management/configuration/download"
@@ -227,7 +227,7 @@ class IPFConfigsMixin(IPFBaseClient):
         batching_sem = Semaphore(batch_sz)
 
         async def fetch_device_config(_hash):
-            """ perform a config fetch limited by semaphore """
+            """perform a config fetch limited by semaphore"""
             async with batching_sem:
                 api_res = await self.api.get(
                     URIs.download_device_config,

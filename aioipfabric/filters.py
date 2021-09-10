@@ -179,15 +179,15 @@ _grammer = Grammar(FILTER_GRAMMER)
 
 
 class _FilterConstructor(NodeVisitor):
-    """ parsimouneous node visitor for handlingn the FILTER_GRAMMER """
+    """parsimouneous node visitor for handlingn the FILTER_GRAMMER"""
 
     def visit_group_expr(self, node, vc):  # noqa
-        """ create a group_expr item """
+        """create a group_expr item"""
         group_tok, _, _, _, filter_list, *_ = vc
         return {group_tok: filter_list}
 
     def visit_group_list_expr(self, node, vc):  # noqa
-        """ create a list of group_expr items """
+        """create a list of group_expr items"""
         expr_1, _, expr_n = vc
         expr_list = [
             expr_1,
@@ -199,7 +199,7 @@ class _FilterConstructor(NodeVisitor):
         return vc[0]
 
     def visit_simple_expr(self, node, vc):  # noqa
-        """ return a filter dictionary """
+        """return a filter dictionary"""
         col, rhs = vc[0], vc[2][0]
 
         if rhs[0] == "empty":
@@ -215,26 +215,26 @@ class _FilterConstructor(NodeVisitor):
     # -------------------------------------------------------------------------
 
     def visit_num_oper_expr_rhs(self, node, vc):  # noqa
-        """ returns the number operator and RHS value """
+        """returns the number operator and RHS value"""
         oper, _, tok = vc
         return [oper[0], tok]
 
     def visit_str_oper_expr_rhs(self, node, vc):  # noqa
-        """ returns the string operator and RHS value """
+        """returns the string operator and RHS value"""
         oper, _, tok = vc
         return [oper[0], tok]
 
     def visit_oper_expr_rhs(self, node, vc):  # noqa
-        """ returns the operattor right-hand-side expression list item """
+        """returns the operattor right-hand-side expression list item"""
         return vc[0]
 
     def visit_column_expr_rhs(self, node, vc):  # noqa
-        """ return the 'column' operation right-hand-side expression list item"""
+        """return the 'column' operation right-hand-side expression list item"""
         col_oper, _, oper, _, col_name = vc
         return [col_oper.text, oper, col_name]
 
     def visit_color_expr_rhs(self, node, vc):  # noqa
-        """ return the 'column' operation + right-hand-side expression list item"""
+        """return the 'column' operation + right-hand-side expression list item"""
         col_oper, _, oper_val = vc
         return [col_oper.text, *oper_val]
 
@@ -243,11 +243,11 @@ class _FilterConstructor(NodeVisitor):
     # -------------------------------------------------------------------------
 
     def visit_group_tok(self, node, vc):  # noqa
-        """ returns the group operator (and, or) value """
+        """returns the group operator (and, or) value"""
         return node.text
 
     def visit_cmp_value_tok(self, node, vc):  # noqa
-        """ children will either be a single node-value or a quoted-value """
+        """children will either be a single node-value or a quoted-value"""
         vc = vc.pop(0)
 
         if isinstance(vc, RegexNode):
@@ -257,11 +257,11 @@ class _FilterConstructor(NodeVisitor):
         return value_node.text
 
     def visit_int_tok(self, node, vc):  # noqa
-        """ returns the value as an integer """
+        """returns the value as an integer"""
         return int(node.text)
 
     def visit_col_name(self, node, vc):  # noqa
-        """ returns the column name (str) """
+        """returns the column name (str)"""
         return node.text
 
     # -------------------------------------------------------------------------
@@ -269,19 +269,19 @@ class _FilterConstructor(NodeVisitor):
     # -------------------------------------------------------------------------
 
     def visit_str_oper(self, node, vc):  # noqa
-        """ returns the string operator in IPF API form """
+        """returns the string operator in IPF API form"""
         return _OPERATORS[node.text]
 
     def visit_num_oper(self, node, vc):  # noqa
-        """ returns the number operator in IPF API form """
+        """returns the number operator in IPF API form"""
         return _OPERATORS[node.text]
 
     def visit_ei_oper(self, node, vc):  # noqa
-        """ returns the equality operator in IPF API form """
+        """returns the equality operator in IPF API form"""
         return _OPERATORS[node.text]
 
     def generic_visit(self, node, visited_children):
-        """ pass through for nodes not explicility visited """
+        """pass through for nodes not explicility visited"""
         return visited_children or node
 
 
