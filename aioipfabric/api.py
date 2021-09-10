@@ -44,7 +44,7 @@ __all__ = ["IPFSession"]
 
 @dataclass
 class URIs:
-    """ identifies API URL endpoings used"""
+    """identifies API URL endpoings used"""
 
     login = "auth/login"
     token_refresh = "auth/token"
@@ -125,7 +125,7 @@ class IPFSession(AsyncClient):
 
     @property
     def token(self):
-        """ return the Refresh Token for later use/storage """
+        """return the Refresh Token for later use/storage"""
         return self.__api_token or self.__refresh_token
 
     # -------------------------------------------------------------------------
@@ -159,7 +159,7 @@ class IPFSession(AsyncClient):
             await self.refresh_token(self.__refresh_token)
 
     async def refresh_token(self, token: Optional[str] = None):
-        """ using the refresh token, obtain a new access token """
+        """using the refresh token, obtain a new access token"""
 
         if token:
             self.__refresh_token = token
@@ -175,14 +175,14 @@ class IPFSession(AsyncClient):
     # -------------------------------------------------------------------------
 
     async def __refresh_access_token(self, refresh_token):
-        """ underlying API call to update the access token """
+        """underlying API call to update the access token"""
         res = await self.post(URIs.token_refresh, json={"refreshToken": refresh_token})
         res.raise_for_status()
         body = res.json()
         self.__access_token = body["accessToken"]
 
     async def __auth_userpass(self, username, password):
-        """ underlying API to call to authenticate using login credentials """
+        """underlying API to call to authenticate using login credentials"""
         res = await self.post(
             URIs.login, json={"username": username, "password": password}
         )

@@ -41,7 +41,7 @@ from aioipfabric.consts import COLOR_GREEN, TableFields
 
 @dataclass
 class URIs:
-    """ identifies API URL endpoings used"""
+    """identifies API URL endpoings used"""
 
     devices = "/tables/inventory/devices"
     device_parts = "/tables/inventory/pn"

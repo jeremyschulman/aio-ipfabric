@@ -52,7 +52,7 @@ DEFAULT_PORTCHAN_MEMBER_COLUMNS = [
 
 @dataclass
 class URIs:
-    """ identifies API URL endpoints used"""
+    """identifies API URL endpoints used"""
 
     member_status = "/tables/interfaces/port-channel/member-status"
 
@@ -71,7 +71,7 @@ _re_portmember = re.compile(r"(?P<intName>\S+)\((?P<state>\w+)\)")
 
 
 class IPFPortChannelsMixin(IPFBaseClient):
-    """ Mixin for Port-Channels """
+    """Mixin for Port-Channels"""
 
     @table_api
     async def fetch_portchannels(self, request: dict) -> Response:
