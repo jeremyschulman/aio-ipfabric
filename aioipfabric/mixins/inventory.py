@@ -45,6 +45,7 @@ class URIs:
 
     devices = "/tables/inventory/devices"
     device_parts = "/tables/inventory/pn"
+    device_interfaces = "/tables/inventory/interfaces"
     managed_ipaddrs = "/tables/addressing/managed-devs"
     snapshots = "/snapshots"
 
@@ -61,6 +62,13 @@ DEFAULT_PARTS_COLUMNS = [
     "vendor",
     "platform",
     "model",
+]
+
+DEFAULT_INTERFACE_COLUMNS = [
+    "hostname",
+    "intName",
+    "siteName",
+    "dscr"
 ]
 
 
@@ -171,3 +179,20 @@ class IPFInventoryMixin(IPFBaseClient):
         """
         request.setdefault("columns", DEFAULT_PARTS_COLUMNS)
         return await self.api.post(URIs.device_parts, json=request)
+
+    @table_api
+    async def fetch_device_interfaces(self, request: dict) -> Response:
+        """
+        Fetch <Inventory | Interfaces>
+
+        Parameters
+        ----------
+        request: dict
+            The API body request payload, prepared by the table_api decorator
+
+        Returns
+        -------
+        The HTTPx response, which will be post-processed by the table_api decorator.
+        """
+        request.setdefault("columns", DEFAULT_INTERFACE_COLUMNS)
+        return await self.api.post(URIs.device_interfaces, json=request)
