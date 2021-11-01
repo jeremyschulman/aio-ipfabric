@@ -22,6 +22,7 @@ This module contains IPF client mixins that perform the "diagram" queries.
 
 from typing import Optional, Dict, Union
 from dataclasses import dataclass
+from json import dumps
 
 # -----------------------------------------------------------------------------
 # Private Imports
@@ -41,7 +42,7 @@ from aioipfabric.base_client import IPFBaseClient
 class URIs:
     """identifies API URL endpoints used"""
 
-    end_to_end_path = "graph/end-to-end-path"
+    end_to_end_path = "graphs"
 
 
 class IPFDiagramE2EMixin(IPFBaseClient):
@@ -52,10 +53,12 @@ class IPFDiagramE2EMixin(IPFBaseClient):
         src_ip: str,
         dst_ip: Optional[str] = "0.0.0.0",
         proto: Optional[str] = "tcp",
-        src_port: Optional[Union[str, int]] = 10_000,
-        dst_port: Optional[Union[str, int]] = 10_000,
-        check_rpf: Optional[bool] = True,
-        check_asymmetric: Optional[bool] = False,
+        src_port: Optional[Union[str, int]] = 10000,
+        dst_port: Optional[Union[str, int]] = 80,
+        sec_drop: Optional[bool] = True,
+        lookup: Optional[str] = "unicast",
+        group: Optional[str] = "siteName"
+
     ) -> Dict:
         """
         Execute an "End-to-End Path" diagram query for the given set of parameters.
@@ -63,37 +66,52 @@ class IPFDiagramE2EMixin(IPFBaseClient):
         Parameters
         ----------
         src_ip
-            Source IP address
+            Source IP address or subnet
         dst_ip
-            Destination IP address
+            Destination IP address or subnet
         proto
             Protocol: "tcp", "udp", or "icmp"
         src_port
             Source Port
         dst_port
             Destination Port
-        check_rpf
-            Boolean to check for reverse path forwarding
-        check_asymmetric
-            Boolean to check for asymmetric routine
+        sec_drop
+            True specifies Security Rules will Drop and not Continue
+        lookup
+            Type of lookup: "unicast", "multicast", "hostToDefaultGW"
+        group
+            Group by "siteName", "routingDomain", "stpDomain"
+
 
         Returns
         -------
-        Returns a dictionary with 'graph' and 'ad' primary keys.  For more details refer to this
+        Returns a dictionary with 'graphResult' and 'pathlookup' primary keys.  For more details refer to this
         IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
         """
-        res = await self.api.get(
+        res = await self.api.post(
             URIs.end_to_end_path,
-            params=dict(
-                source=src_ip,
-                sourcePort=src_port,
-                destination=dst_ip,
-                destinationPort=dst_port,
-                protocol=proto,
-                asymmetric=check_asymmetric,
-                rpf=check_rpf,
-                snapshot=self.active_snapshot,
-            ),
+            data=dumps(dict(
+                parameters=dict(
+                    startingPoint=src_ip,
+                    startingPort=src_port,
+                    destinationPoint=dst_ip,
+                    destinationPort=dst_port,
+                    protocol=proto,
+                    type="pathLookup",
+                    networkMode=self.network_mode(src_ip, dst_ip),
+                    securedPath=sec_drop,
+                    pathLookupType=lookup,
+                    groupBy=group
+                ),
+                snapshot=self.active_snapshot
+            ))
         )
         res.raise_for_status()
         return res.json()
+
+    @staticmethod
+    def network_mode(src_ip,  dst_ip):
+        if '/' in src_ip or '/' in dst_ip:
+            return True
+        else:
+            return False
