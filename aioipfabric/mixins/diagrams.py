@@ -57,7 +57,7 @@ class IPFDiagramE2EMixin(IPFBaseClient):
         dst_port: Optional[Union[str, int]] = 80,
         sec_drop: Optional[bool] = True,
         lookup: Optional[str] = "unicast",
-        group: Optional[str] = "siteName"
+        grouping: Optional[str] = "siteName"
 
     ) -> Dict:
         """
@@ -79,7 +79,7 @@ class IPFDiagramE2EMixin(IPFBaseClient):
             True specifies Security Rules will Drop and not Continue
         lookup
             Type of lookup: "unicast", "multicast", "hostToDefaultGW"
-        group
+        grouping
             Group by "siteName", "routingDomain", "stpDomain"
 
 
@@ -90,7 +90,7 @@ class IPFDiagramE2EMixin(IPFBaseClient):
         """
         res = await self.api.post(
             URIs.end_to_end_path,
-            data=dumps(dict(
+            json=dict(
                 parameters=dict(
                     startingPoint=src_ip,
                     startingPort=src_port,
@@ -101,10 +101,10 @@ class IPFDiagramE2EMixin(IPFBaseClient):
                     networkMode=self.network_mode(src_ip, dst_ip),
                     securedPath=sec_drop,
                     pathLookupType=lookup,
-                    groupBy=group
+                    groupBy=grouping
                 ),
                 snapshot=self.active_snapshot
-            ))
+            )
         )
         res.raise_for_status()
         return res.json()
