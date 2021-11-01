@@ -23,7 +23,6 @@ This module contains IPF client mixins that perform the "diagram" queries.
 import ipaddress
 from typing import Optional, Dict
 from dataclasses import dataclass
-from ipaddress import IPv4Network
 
 # -----------------------------------------------------------------------------
 # Private Imports
@@ -173,11 +172,11 @@ class IPFDiagramE2EMixin(IPFBaseClient):
     @staticmethod
     def check_ips(parameters):
         try:
-            src_net = IPv4Network(parameters['startingPoint'], strict=False)
+            src_net = ipaddress.IPv4Network(parameters['startingPoint'], strict=False)
         except ipaddress.AddressValueError:
             raise ipaddress.AddressValueError("Source IP is not a valid IP or subnet.")
         try:
-            dst_net = IPv4Network(parameters['destinationPoint'], strict=False)
+            dst_net = ipaddress.IPv4Network(parameters['destinationPoint'], strict=False)
         except ipaddress.AddressValueError:
             raise ipaddress.AddressValueError("Destination IP is not a valid IP or subnet.")
         if parameters['pathLookupType'] == 'multicast' and (src_net.prefixlen != 32 or dst_net.prefixlen != 32):
