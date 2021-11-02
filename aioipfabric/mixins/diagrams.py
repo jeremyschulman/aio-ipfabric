@@ -42,23 +42,30 @@ from aioipfabric.base_client import IPFBaseClient
 class URIs:
     """identifies API URL endpoints used"""
 
-    end_to_end_path = "graphs"
+    json_path = "graphs"
+    svg_path = "graphs/svg"
+
+
+@dataclass
+class E2E:
+    json: dict
+    svg: bytes = bytes()
 
 
 class IPFDiagramE2EMixin(IPFBaseClient):
     """Mixin for End-to-End Path query"""
 
-    def end_to_end_path(
+    def unicast_lookup(
         self,
         src_ip: str,
-        dst_ip: Optional[str] = "0.0.0.0",
+        dst_ip: str,
         proto: Optional[str] = "tcp",
         src_port: Optional[int] = 10000,
         dst_port: Optional[int] = 80,
         sec_drop: Optional[bool] = True,
-        lookup: Optional[str] = "unicast",
         grouping: Optional[str] = "siteName",
-        flags: Optional[list] = list()
+        flags: Optional[list] = list(),
+        svg: Optional[bool] = False
     ) -> Dict:
         """
         Execute an "End-to-End Path" diagram query for the given set of parameters.
@@ -83,12 +90,15 @@ class IPFDiagramE2EMixin(IPFBaseClient):
             Group by "siteName", "routingDomain", "stpDomain"
         flags
             TCP flags, defaults to None. Must be a list and only allowed values can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
-
+        svg
+            Default False, if True will do a second call to IP Fabric to pull SVG image data
 
         Returns
         -------
-        Returns a dictionary with 'graphResult' and 'pathlookup' primary keys.  For more details refer to this
-        IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.  
+        If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
+        
+        For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
         """
         
         parameters = dict(
@@ -99,31 +109,89 @@ class IPFDiagramE2EMixin(IPFBaseClient):
             protocol=proto,
             type="pathLookup",
             securedPath=sec_drop,
-            pathLookupType=lookup,
+            pathLookupType="unicast",
+            groupBy=grouping,
+            networkMode=self.check_subents([src_ip, dst_ip])
+        )
+        parameters = self.check_proto(parameters, flags)
+
+        return self.submit_query(parameters, svg)
+
+    def multicast_lookup(
+        self,
+        src_ip: str,
+        grp_ip: str,
+        rec_ip: Optional[str] = None,
+        src_port: Optional[int] = 10000,
+        dst_port: Optional[int] = 80,
+        proto: Optional[str] = "tcp",
+        sec_drop: Optional[bool] = True,
+        grouping: Optional[str] = "siteName",
+        flags: Optional[list] = list(),
+        svg: Optional[bool] = False
+    ) -> Dict:
+        """
+        Execute an "End-to-End Path" diagram query for the given set of parameters.
+
+        Parameters
+        ----------
+        src_ip
+            Source IP address
+        grp_ip
+            Multicast group IP Address
+        rec_ip
+            Optional: Receiver IP
+        proto
+            Protocol: "tcp", "udp", or "icmp"
+        src_port
+            Source Port for tcp or udp
+        dst_port
+            Destination Port for tcp or udp
+        sec_drop
+            True specifies Security Rules will Drop packets and not Continue
+        grouping
+            Group by "siteName", "routingDomain", "stpDomain"
+        flags
+            TCP flags, defaults to None. Must be a list and only allowed values can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
+        svg
+            Default False, if True will do a second call to IP Fabric to pull SVG image data
+
+        Returns
+        -------
+        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.  
+        If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
+        
+        For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+        """
+        if self.check_subents([src_ip, grp_ip]):
+            raise SyntaxError("Multicast does not support subnets, please provide a single IP for Source and Group")
+
+        parameters = dict(
+            source=src_ip,
+            sourcePort=src_port,
+            group=grp_ip,
+            groupPort=dst_port,
+            protocol=proto,
+            type="pathLookup",
+            securedPath=sec_drop,
+            pathLookupType="multicast",
             groupBy=grouping
         )
+        if rec_ip:
+            if self.check_subents([rec_ip]):
+                raise SyntaxError("Multicast Receiver IP must be a single IP not subnet.")
+            else:
+                parameters['receiver'] = rec_ip
 
-        parameters = self.check_ips(parameters)
-        parameters = self.tcp_flags(parameters, flags)
+        parameters = self.check_proto(parameters, flags)
 
-        if proto == 'icmp':
-            del parameters['destinationPort'], parameters['startingPort']
-        if lookup == 'multicast':
-            del parameters['networkMode']
-            parameters['source'] = parameters.pop('startingPoint')
-            parameters['group'] = parameters.pop('destinationPoint')
-            if proto != 'icmp':
-                parameters['sourcePort'] = parameters.pop('startingPoint')
-                parameters['groupPort'] = parameters.pop('destinationPoint')
-            if '/' in parameters['source'] or '/' in parameters['group']:
-                raise SyntaxError("Multicast lookups only accept single IP's not subnets.")
-
-        return self.submit_query(parameters)
+        return self.submit_query(parameters, svg)
 
     def host_to_gateway(
         self,
         src_ip: str,
         grouping: Optional[str] = "siteName",
+        svg: Optional[bool] = False
     ) -> Dict:
         """
         Execute an "Host to Gateway" diagram query for the given set of parameters.
@@ -134,12 +202,15 @@ class IPFDiagramE2EMixin(IPFBaseClient):
             Source IP address or subnet
         grouping
             Group by "siteName", "routingDomain", "stpDomain"
-
+        svg
+            Default False, if True will do a second call to IP Fabric to pull SVG image data
 
         Returns
         -------
-        Returns a dictionary with 'graphResult' and 'pathlookup' primary keys.  For more details refer to this
-        IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.  
+        If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
+        
+        For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
         """
         parameters = dict(
             startingPoint=src_ip,
@@ -147,40 +218,49 @@ class IPFDiagramE2EMixin(IPFBaseClient):
             pathLookupType="hostToDefaultGW",
             groupBy=grouping
         )
-        return self.submit_query(parameters)
+        return self.submit_query(parameters, svg)
 
-    async def submit_query(self, parameters):
-        res = await self.api.post(
-            URIs.end_to_end_path,
-            json=dict(
+    async def submit_query(self, parameters, svg):
+        data = dict(
                 parameters=parameters,
                 snapshot=self.active_snapshot
-            )
+        )
+        res = await self.api.post(
+            URIs.json_path,
+            json=data
         )
         res.raise_for_status()
-        return res.json()
+        e2e = E2E(res.json())
+        if svg:
+            res = await self.api.post(
+                URIs.svg_path,
+                json=data
+            )
+            res.raise_for_status()
+            e2e.svg = res.content
+        return e2e
     
     @staticmethod
-    def tcp_flags(parameters, flags):
+    def check_proto(parameters, flags):
         if parameters['protocol'] == 'tcp' and flags:
             if(all(x in ['ack', 'fin', 'psh', 'rst', 'syn', 'urg'] for x in flags)):
                 parameters['flags'] = flags
             else:
                 raise SyntaxError("Only accepted TCP flags are ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']")
+        elif parameters['protocol'] == 'icmp':
+            parameters.pop('startingPort', None)
+            parameters.pop('destinationPort', None)
+            parameters.pop('sourcePort', None)
+            parameters.pop('groupPort', None)
         return parameters
     
     @staticmethod
-    def check_ips(parameters):
-        try:
-            src_net = ipaddress.IPv4Network(parameters['startingPoint'], strict=False)
-        except ipaddress.AddressValueError:
-            raise ipaddress.AddressValueError("Source IP is not a valid IP or subnet.")
-        try:
-            dst_net = ipaddress.IPv4Network(parameters['destinationPoint'], strict=False)
-        except ipaddress.AddressValueError:
-            raise ipaddress.AddressValueError("Destination IP is not a valid IP or subnet.")
-        if parameters['pathLookupType'] == 'multicast' and (src_net.prefixlen != 32 or dst_net.prefixlen != 32):
-            raise SyntaxError("Multicast lookups requires single Source and Group IP's, not subnets.")
-        
-        parameters['networkMode'] = True if src_net.prefixlen != 32 or dst_net.prefixlen != 32 else False
-        return parameters
+    def check_subents(ips):
+        masks = set()
+        for ip in ips:
+            try:
+                masks.add(ipaddress.IPv4Network(ip, strict=False).prefixlen)
+            except (ipaddress.AddressValueError, ipaddress.NetmaskValueError):
+                raise ipaddress.AddressValueError(f"{ip} is not a valid IP or subnet.")
+
+        return True if masks != {32} else False
