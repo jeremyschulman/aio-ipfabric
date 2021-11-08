@@ -21,7 +21,7 @@ This module contains IPF client mixins that perform the "diagram" queries.
 # -----------------------------------------------------------------------------
 
 import ipaddress
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 from dataclasses import dataclass
 
 # -----------------------------------------------------------------------------
@@ -46,17 +46,11 @@ class URIs:
     svg_path = "graphs/svg"
 
 
-@dataclass
-class E2E:
-    json: dict
-    svg: bytes = bytes()
+class IPFDiagramPathMixin(IPFBaseClient):
+    """Mixin for Path Lookup queries"""
+    svg: bool = False
 
-
-class IPFDiagramPathMixin(IPFBaseClient, svg=False):
-    """Mixin for End-to-End Path query"""
-    svg: bool
-
-    def path_unicast_lookup(
+    async def path_unicast_lookup(
         self,
         src_ip: str,
         dst_ip: str,
@@ -66,7 +60,7 @@ class IPFDiagramPathMixin(IPFBaseClient, svg=False):
         sec_drop: Optional[bool] = True,
         grouping: Optional[str] = "siteName",
         flags: Optional[list] = None
-    ) -> Dict:
+    ) -> Union[dict, bytes]:
         """
         Execute an "End-to-End Path" diagram query for the given set of parameters.
 
@@ -108,24 +102,24 @@ class IPFDiagramPathMixin(IPFBaseClient, svg=False):
             securedPath=sec_drop,
             pathLookupType="unicast",
             groupBy=grouping,
-            networkMode=self.check_subents([src_ip, dst_ip])
+            networkMode=self.check_subnets([src_ip, dst_ip])
         )
         parameters = self.check_proto(parameters, flags)
 
-        return self.submit_query(parameters)
+        return await self.submit_query(parameters)
 
-    def path_multicast_lookup(
+    async def path_multicast_lookup(
         self,
         src_ip: str,
         grp_ip: str,
+        proto: str = "tcp",
         rec_ip: Optional[str] = None,
         src_port: Optional[int] = 10000,
         dst_port: Optional[int] = 80,
-        proto: Optional[str] = "tcp",
         sec_drop: Optional[bool] = True,
         grouping: Optional[str] = "siteName",
-        flags: Optional[list] = list()
-    ) -> Dict:
+        flags: Optional[list] = None
+    ) -> Union[dict, bytes]:
         """
         Execute an "End-to-End Path" diagram query for the given set of parameters.
 
@@ -157,7 +151,7 @@ class IPFDiagramPathMixin(IPFBaseClient, svg=False):
         
         For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
         """
-        if self.check_subents([src_ip, grp_ip]):
+        if self.check_subnets([src_ip, grp_ip]):
             raise SyntaxError("Multicast does not support subnets, please provide a single IP for Source and Group")
 
         parameters = dict(
@@ -172,20 +166,20 @@ class IPFDiagramPathMixin(IPFBaseClient, svg=False):
             groupBy=grouping
         )
         if rec_ip:
-            if self.check_subents([rec_ip]):
+            if self.check_subnets([rec_ip]):
                 raise SyntaxError("Multicast Receiver IP must be a single IP not subnet.")
             else:
                 parameters['receiver'] = rec_ip
 
         parameters = self.check_proto(parameters, flags)
 
-        return self.submit_query(parameters)
+        return await self.submit_query(parameters)
 
-    def path_host_to_gateway(
+    async def path_host_to_gateway(
         self,
         src_ip: str,
         grouping: Optional[str] = "siteName"
-    ) -> Dict:
+    ) -> Union[dict, bytes]:
         """
         Execute an "Host to Gateway" diagram query for the given set of parameters.
 
@@ -203,15 +197,16 @@ class IPFDiagramPathMixin(IPFBaseClient, svg=False):
         
         For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
         """
+        self.check_subnets([src_ip])
         parameters = dict(
             startingPoint=src_ip,
             type="pathLookup",
             pathLookupType="hostToDefaultGW",
             groupBy=grouping
         )
-        return self.submit_query(parameters)
+        return await self.submit_query(parameters)
 
-    async def submit_query(self, parameters):
+    async def submit_query(self, parameters) -> Union[dict, bytes]:
         data = dict(
                 parameters=parameters,
                 snapshot=self.active_snapshot
@@ -227,7 +222,7 @@ class IPFDiagramPathMixin(IPFBaseClient, svg=False):
     @staticmethod
     def check_proto(parameters, flags):
         if parameters['protocol'] == 'tcp' and flags:
-            if(all(x in ['ack', 'fin', 'psh', 'rst', 'syn', 'urg'] for x in flags)):
+            if all(x in ['ack', 'fin', 'psh', 'rst', 'syn', 'urg'] for x in flags):
                 parameters['flags'] = flags
             else:
                 raise SyntaxError("Only accepted TCP flags are ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']")
@@ -239,11 +234,11 @@ class IPFDiagramPathMixin(IPFBaseClient, svg=False):
         return parameters
     
     @staticmethod
-    def check_subents(ips):
+    def check_subnets(ips) -> bool:
         masks = set()
         for ip in ips:
             try:
-                masks.add(ipaddress.IPv4Network(ip, strict=False).prefixlen)
+                masks.add(ipaddress.IPv4Interface(ip).network.prefixlen)
             except (ipaddress.AddressValueError, ipaddress.NetmaskValueError):
                 raise ipaddress.AddressValueError(f"{ip} is not a valid IP or subnet.")
 
