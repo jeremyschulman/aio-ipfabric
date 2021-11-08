@@ -47,7 +47,10 @@ class URIs:
 
 
 class IPFDiagramPathMixin(IPFBaseClient):
-    """Mixin for Path Lookup queries"""
+    """
+    Mixin for Path Lookup queries.
+    After initializing you can set SVG to True to return SVG object instead of JSON data
+    """
     svg: bool = False
 
     async def path_unicast_lookup(
@@ -102,7 +105,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
             securedPath=sec_drop,
             pathLookupType="unicast",
             groupBy=grouping,
-            networkMode=self.check_subnets([src_ip, dst_ip])
+            networkMode=self.check_subnets(src_ip, dst_ip)
         )
         parameters = self.check_proto(parameters, flags)
 
@@ -151,7 +154,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
         
         For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
         """
-        if self.check_subnets([src_ip, grp_ip]):
+        if self.check_subnets(src_ip, grp_ip):
             raise SyntaxError("Multicast does not support subnets, please provide a single IP for Source and Group")
 
         parameters = dict(
@@ -166,7 +169,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
             groupBy=grouping
         )
         if rec_ip:
-            if self.check_subnets([rec_ip]):
+            if self.check_subnets(rec_ip):
                 raise SyntaxError("Multicast Receiver IP must be a single IP not subnet.")
             else:
                 parameters['receiver'] = rec_ip
@@ -197,7 +200,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
         
         For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
         """
-        self.check_subnets([src_ip])
+        self.check_subnets(src_ip)
         parameters = dict(
             startingPoint=src_ip,
             type="pathLookup",
@@ -207,6 +210,18 @@ class IPFDiagramPathMixin(IPFBaseClient):
         return await self.submit_query(parameters)
 
     async def submit_query(self, parameters) -> Union[dict, bytes]:
+        """
+        Submits query to the API
+
+        Parameters
+        ----------
+        parameters
+            dict: Data to submit
+
+        Returns
+        -------
+        Dictionary if JSON or Bytes if SVG
+        """
         data = dict(
                 parameters=parameters,
                 snapshot=self.active_snapshot
@@ -220,7 +235,21 @@ class IPFDiagramPathMixin(IPFBaseClient):
             return res.json()
     
     @staticmethod
-    def check_proto(parameters, flags):
+    def check_proto(parameters, flags) -> dict:
+        """
+        Checks parameters and flags
+
+        Parameters
+        ----------
+        parameters
+            dict: Data to Post
+        flags
+            list: List of opptional TCP flags
+
+        Returns
+        -------
+        dict: formatted parameters, removing ports if icmp
+        """
         if parameters['protocol'] == 'tcp' and flags:
             if all(x in ['ack', 'fin', 'psh', 'rst', 'syn', 'urg'] for x in flags):
                 parameters['flags'] = flags
@@ -234,7 +263,19 @@ class IPFDiagramPathMixin(IPFBaseClient):
         return parameters
     
     @staticmethod
-    def check_subnets(ips) -> bool:
+    def check_subnets(*ips) -> bool:
+        """
+        Checks for valid IP Addresses or Subnet
+
+        Parameters
+        ----------
+        *ips
+            ip addresses
+
+        Returns
+        -------
+        True if a subnet is found to set to networkMode, False if only hosts
+        """
         masks = set()
         for ip in ips:
             try:
