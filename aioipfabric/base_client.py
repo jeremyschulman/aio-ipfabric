@@ -264,7 +264,7 @@ class IPFBaseClient(object):
     async def login(self):
         """
         Coroutine to perform the initial login authentication process, retrieve the list
-        of current snapshots, and set the `active_snapshot` attribute to the latest
+        of current snapshots, and set the `active_snapshot` attribute to the latest loaded
         snapshot.
         """
         if self.api.token and self.api.is_closed:
@@ -287,7 +287,10 @@ class IPFBaseClient(object):
         # fetch the snapshot catalog and default the active to the most recent one.
         # TODO: might want to only fetch the "latest" snapshot vs. all.
         await self.fetch_snapshots()
-        self._active_snapshot = self.snapshots[0]["id"]
+        self._active_snapshot = next(
+            (snapshot["id"] for snapshot in self.snapshots if snapshot['state'] == 'loaded'),
+            None
+        )
 
     async def logout(self):
         """close the async connection"""
