@@ -148,7 +148,7 @@ class IPFConfigsMixin(IPFBaseClient):
         2020-Sep-09)
         """
 
-        since_criteria = "lastCheck" if all_configs else "lastChange"
+        since_criteria = "lastCheckAt" if all_configs else "lastChangeAt"
 
         # The first step is to retrieve each of the configuration "hash" records
         # using the active snapshot start timestamp as the basis for the filter.
@@ -180,16 +180,15 @@ class IPFConfigsMixin(IPFBaseClient):
 
         payload = {
             "columns": [
-                "_id",
+                "id",
                 "sn",
                 "hostname",
-                "lastChange",
-                "lastCheck",
+                "lastChangeAt",
+                "lastCheckAt",
                 "status",
                 "hash",
             ],
             "filters": filters_,
-            "snapshot": self.active_snapshot,
             "sort": {"column": since_criteria, "order": "desc"},
             "reports": "/management/configuration/first",
         }
