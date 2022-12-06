@@ -82,8 +82,6 @@ class IPFDiagramPathMixin(IPFBaseClient):
             Destination Port for tcp or udp
         sec_drop
             True specifies Security Rules will Drop packets and not Continue
-        lookup
-            Type of lookup: "unicast" or "multicast"
         grouping
             Group by "siteName", "routingDomain", "stpDomain"
         flags
