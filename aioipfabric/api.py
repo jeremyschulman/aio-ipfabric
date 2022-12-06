@@ -136,9 +136,9 @@ class IPFSession(AsyncClient):
 
     async def authenticate(self):
         """
-        This coroutine is used to authenticate to the IPF server and obtain an access
-        token.  This coroutine can be used for both the initial login process as well
-        as the token refresh process.
+        This coroutine is used to authenticate to the IPF server and obtain an
+        access token.  This coroutine can be used for both the initial login
+        process and the token refresh process.
         """
 
         # If using the API Token approach, there is nothing to do.
@@ -149,7 +149,7 @@ class IPFSession(AsyncClient):
         # the first time this method is called use the coroutine as selected in
         # the __init__ method based on the provided credentials. Any subsequent
         # call to `authenticate` will use `refresh_token`.  The code below uses
-        # the try/except catching the RuntimeError to detected the "first use"
+        # the try/except catching the RuntimeError to detect the "first use"
         # vs. subsequent uses.
 
         try:

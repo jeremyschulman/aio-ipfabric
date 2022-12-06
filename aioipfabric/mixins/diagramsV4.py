@@ -85,7 +85,8 @@ class IPFDiagramPathMixin(IPFBaseClient):
         grouping
             Group by "siteName", "routingDomain", "stpDomain"
         flags
-            TCP flags, defaults to None. Must be a list and only allowed values can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
+            TCP flags, defaults to None. Must be a list and only allowed values
+            can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
 
         Returns
         -------
@@ -144,7 +145,8 @@ class IPFDiagramPathMixin(IPFBaseClient):
         grouping
             Group by "siteName", "routingDomain", "stpDomain"
         flags
-            TCP flags, defaults to None. Must be a list and only allowed values can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
+            TCP flags, defaults to None. Must be a list and only allowed values
+            can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
 
         Returns
         -------
@@ -185,7 +187,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
         self, src_ip: str, grouping: Optional[str] = "siteName"
     ) -> Union[dict, bytes]:
         """
-        Execute an "Host to Gateway" diagram query for the given set of parameters.
+        Execute a "Host to Gateway" diagram query for the given set of parameters.
 
         Parameters
         ----------
