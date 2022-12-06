@@ -288,8 +288,12 @@ class IPFBaseClient(object):
         # TODO: might want to only fetch the "latest" snapshot vs. all.
         await self.fetch_snapshots()
         self._active_snapshot = next(
-            (snapshot["id"] for snapshot in self.snapshots if snapshot['state'] == 'loaded'),
-            None
+            (
+                snapshot["id"]
+                for snapshot in self.snapshots
+                if snapshot["state"] == "loaded"
+            ),
+            None,
         )
 
     async def logout(self):
