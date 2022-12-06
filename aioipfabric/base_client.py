@@ -67,7 +67,7 @@ class IPFBaseClient(object):
     instance).
     """
 
-    API_VER = "/api/v5/"
+    API_VER = "/api/v5.0/"
 
     @dataclass
     class ENV:
