@@ -1,22 +1,28 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 default_language_version:
-    python: python3.8
+    python: python3.10
 
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.4.0
+    rev: v4.4.0
     hooks:
     -   id: debug-statements
     -   id: check-merge-conflict
-    -   id: trailing-whitespace
     -   id: check-yaml
     -   id: check-toml
-    -   id: check-added-large-files
+
+-   repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
     -   id: flake8
+        exclude: 'examples'
+        args: ['--ignore=E501,E203,W503,E731,W291',
+               '--max-line-length=130',
+               '--per-file-ignores=__init__.py:F401']
 
 -   repo: https://github.com/psf/black
-    rev: 21.8b0
+    rev: 22.10.0
     hooks:
     -   id: black
         args: ["."]

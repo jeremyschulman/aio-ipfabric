@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import http
 
 # -----------------------------------------------------------------------------
 # System Imports
@@ -20,7 +21,6 @@
 from typing import Optional, AnyStr, Iterable, List, Dict, Union
 from os import environ, getenv
 from dataclasses import dataclass
-from functools import wraps
 
 # -----------------------------------------------------------------------------
 # Public Imports
@@ -32,9 +32,9 @@ from httpx import Response
 # Private Imports
 # -----------------------------------------------------------------------------
 
-from .consts import ENV, API_VER, TableFields
 from .api import IPFSession
 from .filters import parse_filter
+from .table_api import table_api
 
 # -----------------------------------------------------------------------------
 # Exports
@@ -55,114 +55,6 @@ class URIs:
     """identifies API URL endpoings used"""
 
     snapshots = "/snapshots"
-
-
-def table_api(methcoro):
-    """Method decorator for all Table related APIs"""
-
-    @wraps(methcoro)
-    async def wrapper(
-        self,
-        *,
-        filters=None,
-        columns=None,
-        pagination=None,
-        sort=None,
-        reports=None,
-        request=None,
-        return_as="data",
-        **kwargs,
-    ):
-        """
-        This decorator prepares a request body used to fetch records from a
-        Table.  The wrapped coroutine will be passed at a minimum two
-        Parameters, the first being the instance to the IPF client, and a named
-        parameter `request` that is a dictionary of the prepared fields.  Any
-        other Caller args `kwargs` are passed to the wrapped coroutine as-is.
-
-        The return value is deteremined by the `return_as` parameter.  By
-        default, the return value is a list of table records; that is the
-        response body 'data' list.  If `return_as` is set to "meta" then the
-        return value is the response body 'meta' dict item, which contains the
-        keys such as "count" and "size". If the `return_as` is set to "body"
-        then return value is the entire native response body that contains both
-        the 'data' and '_meta' keys (not the underscore for _meta in this
-        case!).  If `return_as` is set to 'raw' then the response is the raw
-        httpx.Response object.
-
-        Parameters
-        ----------
-        self:
-            The instance of the IPF Client
-
-        filters: dict
-           The IPF filters dictionary item.  If not provided, the
-           request['filters'] will be set to an empty dictionary.
-
-        columns: list
-            The list of table column names; specific to the Table being fetched.
-            If this parameter is None, then the request['columns'] key is not
-            set.
-
-        pagination: dict
-            The IPF API pagination item.  If not provided, the
-            request['pagination'] key is not set.
-
-        sort: dict
-            The IPF API sort item.  If not provided, the request['sort'] key is
-            not set.
-
-        reports: str
-            A request reports string, generally used when retrieving
-            intent-rule-validation values.
-
-        request: dict
-            If provided, this dict is the starting defition of the request
-            passed to the wrapped coroutine.  If not provided, this decorator
-            creates a new dict object that is populated based on the above
-            description.
-
-        return_as
-
-        Other Parameters
-        ----------------
-        Any other key-value arguments are passed 'as-is' to the wrapped coroutine.
-
-        Returns
-        -------
-        Depends on the parameter `return_as` as described above.
-        """
-
-        payload = request or {}
-        payload.setdefault(TableFields.snapshot, self.active_snapshot)
-        payload.setdefault(TableFields.filters, filters or {})
-
-        if columns:
-            payload[TableFields.columns] = columns
-
-        # TODO: perhaps add a default_pagination setting to the IP Client?
-        #       for now the default will be no pagnication
-
-        if pagination:
-            payload["pagination"] = pagination
-
-        if reports:
-            payload["reports"] = reports
-
-        if sort:
-            payload["sort"] = sort
-
-        res = await methcoro(self, request=payload, **kwargs)
-
-        if return_as == "raw":
-            return res
-
-        res.raise_for_status()
-        body = res.json()
-
-        return {"data": body["data"], "meta": body["_meta"], "body": body}[return_as]
-
-    return wrapper
 
 
 class IPFBaseClient(object):
@@ -225,13 +117,16 @@ class IPFBaseClient(object):
         or the refresh token.  One of these two are required.
         """
 
-        token = token or getenv(ENV.token)
-        base_url = base_url or environ[ENV.addr]
-        username = username or getenv(ENV.username)
-        password = password or getenv(ENV.password)
+        token = token or getenv(self.ENV.token)
+        base_url = base_url or environ[self.ENV.addr]
+        username = username or getenv(self.ENV.username)
+        password = password or getenv(self.ENV.password)
+
+        # if the Caller does not provide a base_url that has the '/api/v'
+        # substring then use the default API version for the class.
 
         self.api = IPFSession(
-            base_url=base_url + API_VER,
+            base_url=base_url,
             token=token,
             username=username,
             password=password,
@@ -261,12 +156,34 @@ class IPFBaseClient(object):
             raise ValueError(name)
         self._active_snapshot = s_id
 
+    async def discover_api_version(self):
+        """
+        If the '/api/v' substring is to provided by the Caller then this
+        method will attempt to discover the IPF product version.  As of v5,
+        there is a new endpoint '/api/version' that does NOT require
+        authentication to acceess. if that endpoint exists, then use the
+        version in the response payload to form the basse URL.  If then
+        endpoint does not exist (404) then using a version of IPF < v5.
+        """
+
+        res = await self.api.get("/api/version")
+
+        self.api.base_url = self.api.base_url.join(
+            "/api/v1/"
+            if res.status_code == http.HTTPStatus.NOT_FOUND
+            else f"/api/{res.json()['apiVersion']}"
+        )
+
     async def login(self):
         """
         Coroutine to perform the initial login authentication process, retrieve the list
         of current snapshots, and set the `active_snapshot` attribute to the latest loaded
         snapshot.
         """
+
+        if "/api/v" not in str(self.api.base_url):
+            await self.discover_api_version()
+
         if self.api.token and self.api.is_closed:
             self.api = IPFSession(base_url=str(self.api.base_url), token=self.api.token)
 
@@ -288,8 +205,12 @@ class IPFBaseClient(object):
         # TODO: might want to only fetch the "latest" snapshot vs. all.
         await self.fetch_snapshots()
         self._active_snapshot = next(
-            (snapshot["id"] for snapshot in self.snapshots if snapshot['state'] == 'loaded'),
-            None
+            (
+                snapshot["id"]
+                for snapshot in self.snapshots
+                if snapshot["state"] == "loaded"
+            ),
+            None,
         )
 
     async def logout(self):

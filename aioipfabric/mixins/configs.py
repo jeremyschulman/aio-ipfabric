@@ -198,7 +198,7 @@ class IPFConfigsMixin(IPFBaseClient):
         records = res.json()["data"]
 
         # NOTE: For unknown reasons, there are devices that have more than one
-        # record in this response collection.  Therefore we need to retain only
+        # record in this response collection.  Therefore, we need to retain only
         # the most recent value using a dict and the setdefault method
 
         if before_ts:
@@ -253,9 +253,10 @@ class IPFConfigsMixin(IPFBaseClient):
         )
 
         async for task in as_completed(fetch_tasks, timeout=5 * 60):
-            # the `task` instance will provide both the config text as a result,
-            # and allow use to use the associated coroutine as a lookup so we
-            # can obtain the device record associated with the config.
+            # the `task` instance will provide both the config text as a
+            # result, and allow use to use the associated coroutine as a lookup
+            # so that we can obtain the device record associated with the
+            # config.
 
             rec = fetch_tasks[task.get_coro()]
             t_result = task.result()

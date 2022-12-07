@@ -64,12 +64,7 @@ DEFAULT_PARTS_COLUMNS = [
     "model",
 ]
 
-DEFAULT_INTERFACE_COLUMNS = [
-    "hostname",
-    "intName",
-    "siteName",
-    "dscr"
-]
+DEFAULT_INTERFACE_COLUMNS = ["hostname", "intName", "siteName", "dscr"]
 
 
 class IPFInventoryMixin(IPFBaseClient):

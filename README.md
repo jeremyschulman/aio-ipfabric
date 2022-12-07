@@ -31,32 +31,46 @@ Requests officially supports Python 3.8+.
 # Quick Start
 
 ````python
-import asyncio
 from aioipfabric import IPFabricClient
 
-loop = asyncio.get_event_loop()
+async def demo_1_devices_list():
+    """
+    Example code that uses IPFabricClient without contextmanager
+    """
 
-# create a client using environment variables (see next section)
-ipf = IPFabricClient()
+    # create a client using environment variables (see next section)
+    ipf = IPFabricClient()
 
-# alternatively create instance with parameters
-# ipf = IPFabricClient(base_url='https://myipfserver.com', username='admin', password='admin12345')
-# ipf = IPFabricClient(base_url='https://myipfserver.com', token='TOKENFROMIPF')
+    # alternatively create instance with parameters
+    # ipf = IPFabricClient(base_url='https://myipfserver.com', username='admin', password='admin12345')
+    # ipf = IPFabricClient(base_url='https://myipfserver.com', token='TOKENFROMIPF')
+    
+    # login to IP Fabric system
+    await ipf.login()
 
-# login to IP Fabric system
-loop.run_until_complete(ipf.login())
+    # fetch the complete device inventory
+    device_list = await ipf.fetch_devices()
+    
+    # close asyncio connection, otherwise you will see a warning.
+    await ipf.logout()
+    
+    return device_list
 
-# fetch the complete device inventory
-device_list = loop.run_until_complete(ipf.fetch_devices())
+async def demo_2_devices_list():
+    """
+    Example code that uses IPFabricClient as contextmanager
+    """
 
-# close asyncio connection, otherwise you will see a warning.
-loop.run_until_complete(ipf.logout())
+    # create a client using environment variables (see next section)
+    async with IPFabricClient() as ipf:
+        return await ipf.fetch_devices()    
 ````
+
 
 ## Environment Variables
 
-The following environment variable can be used so that you do no need to provide them in
-your program:
+The following environment variable can be used so that you do no need to
+provide them in your program:
 
    * `IPF_ADDR` - IP Fabric server URL, for example "https://my-ipfabric-server.com/"
    * `IPF_USERNAME` - Login username

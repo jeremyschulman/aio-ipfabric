@@ -1,9 +1,36 @@
-[tool.black]
-target-version = ['py38']
+[tool.poetry]
+    name = "aio-ipfabric"
+    version = "1.0.0"
+    description = "IP Fabric asyncio client"
+    readme = "README.md"
+    authors = [
+        "Jeremy Schulman <nwkautomaniac@gmail.com>",
+    ]
+    packages = [
+        { include = "aioipfabric" },
+    ]
+
+[tool.poetry.dependencies]
+python = ">=3.8.1,<4.0"
+httpx = "^0.23.1"
+parsimonious = "^0.10.0"
+tenacity = "^8.1.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.10.0"
+pre-commit = "^2.20.0"
+interrogate = "^1.5.0"
+flake8 = "^6.0.0"
+flake8-breakpoint = "^1.1.0"
+
+[build-system]
+    requires = ["poetry-core>=1.0.0"]
+    build-backend = "poetry.core.masonry.api"
+
 
 [tool.interrogate]
     fail-under = 0
     verbose = 1
     color = true
     ignore-module = true
-    exclude = ["setup.py", "tasks.py", "examples", "build", "venv"]
+    exclude = ["tasks.py", "examples", "build", "venv"]

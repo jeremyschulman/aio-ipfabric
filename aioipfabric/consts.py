@@ -17,7 +17,6 @@
 # System Imports
 # -----------------------------------------------------------------------------
 
-from dataclasses import dataclass
 from enum import Enum
 
 # -----------------------------------------------------------------------------
@@ -25,19 +24,6 @@ from enum import Enum
 #                                    CODE BEGINS
 #
 # -----------------------------------------------------------------------------
-
-
-@dataclass
-class ENV:
-    """identifies enviornment variables used"""
-
-    addr = "IPF_ADDR"
-    username = "IPF_USERNAME"
-    password = "IPF_PASSWORD"
-    token = "IPF_TOKEN"
-
-
-API_VER = "/api/v1/"
 
 
 COLOR_GREEN = 0

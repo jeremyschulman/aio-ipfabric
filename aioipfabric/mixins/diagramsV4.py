@@ -21,7 +21,7 @@ This module contains IPF client mixins that perform the "diagram" queries.
 # -----------------------------------------------------------------------------
 
 import ipaddress
-from typing import Optional, Dict, Union
+from typing import Optional, Union
 from dataclasses import dataclass
 
 # -----------------------------------------------------------------------------
@@ -50,7 +50,16 @@ class IPFDiagramPathMixin(IPFBaseClient):
     """
     Mixin for Path Lookup queries.
     After initializing you can set SVG to True to return SVG object instead of JSON data
+
+    References
+    ----------
+    For more details refer to this feature, see IPF blog:
+    https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+
+    "Region" support added in v5:
+    https://docs.ipfabric.io/main/releases/release_notes/5.0/
     """
+
     svg: bool = False
 
     async def path_unicast_lookup(
@@ -62,7 +71,8 @@ class IPFDiagramPathMixin(IPFBaseClient):
         dst_port: Optional[int] = 80,
         sec_drop: Optional[bool] = True,
         grouping: Optional[str] = "siteName",
-        flags: Optional[list] = None
+        flags: Optional[list] = None,
+        **opt_args,
     ) -> Union[dict, bytes]:
         """
         Execute an "End-to-End Path" diagram query for the given set of parameters.
@@ -81,18 +91,22 @@ class IPFDiagramPathMixin(IPFBaseClient):
             Destination Port for tcp or udp
         sec_drop
             True specifies Security Rules will Drop packets and not Continue
-        lookup
-            Type of lookup: "unicast" or "multicast"
         grouping
             Group by "siteName", "routingDomain", "stpDomain"
         flags
-            TCP flags, defaults to None. Must be a list and only allowed values can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
+            TCP flags, defaults to None. Must be a list and only allowed values
+            can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
+
+        Other Parameters
+        ----------------
+        As of IPF v5 there are additional parameters for use with "regions".  Refer to the
+        documentation, and use those parameter names as-is and as described.
 
         Returns
         -------
-        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.  
+        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.
         If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
-        
+
         For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
         """
         parameters = dict(
@@ -105,7 +119,8 @@ class IPFDiagramPathMixin(IPFBaseClient):
             securedPath=sec_drop,
             pathLookupType="unicast",
             groupBy=grouping,
-            networkMode=self.check_subnets(src_ip, dst_ip)
+            networkMode=self.check_subnets(src_ip, dst_ip),
+            **opt_args,
         )
         parameters = self.check_proto(parameters, flags)
 
@@ -121,7 +136,8 @@ class IPFDiagramPathMixin(IPFBaseClient):
         dst_port: Optional[int] = 80,
         sec_drop: Optional[bool] = True,
         grouping: Optional[str] = "siteName",
-        flags: Optional[list] = None
+        flags: Optional[list] = None,
+        **opt_args,
     ) -> Union[dict, bytes]:
         """
         Execute an "End-to-End Path" diagram query for the given set of parameters.
@@ -145,17 +161,24 @@ class IPFDiagramPathMixin(IPFBaseClient):
         grouping
             Group by "siteName", "routingDomain", "stpDomain"
         flags
-            TCP flags, defaults to None. Must be a list and only allowed values can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
+            TCP flags, defaults to None. Must be a list and only allowed values
+            can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
+
+        Other Parameters
+        ----------------
+        As of IPF v5 there are additional parameters for use with "regions".  Refer to the
+        documentation, and use those parameter names as-is and as described.
 
         Returns
         -------
-        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.  
-        If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
-        
-        For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+        E2E object json contains a dictionary with 'graphResult' and
+        'pathlookup' primary keys. If SVG set to True E2E.svg will contain
+        bytes data of SVG image you can write to a file or process in webpage.
         """
         if self.check_subnets(src_ip, grp_ip):
-            raise SyntaxError("Multicast does not support subnets, please provide a single IP for Source and Group")
+            raise SyntaxError(
+                "Multicast does not support subnets, please provide a single IP for Source and Group"
+            )
 
         parameters = dict(
             source=src_ip,
@@ -166,25 +189,27 @@ class IPFDiagramPathMixin(IPFBaseClient):
             type="pathLookup",
             securedPath=sec_drop,
             pathLookupType="multicast",
-            groupBy=grouping
+            groupBy=grouping,
+            **opt_args,
         )
+
         if rec_ip:
             if self.check_subnets(rec_ip):
-                raise SyntaxError("Multicast Receiver IP must be a single IP not subnet.")
+                raise SyntaxError(
+                    "Multicast Receiver IP must be a single IP not subnet."
+                )
             else:
-                parameters['receiver'] = rec_ip
+                parameters["receiver"] = rec_ip
 
         parameters = self.check_proto(parameters, flags)
 
         return await self.submit_query(parameters)
 
     async def path_host_to_gateway(
-        self,
-        src_ip: str,
-        grouping: Optional[str] = "siteName"
+        self, src_ip: str, grouping: Optional[str] = "siteName"
     ) -> Union[dict, bytes]:
         """
-        Execute an "Host to Gateway" diagram query for the given set of parameters.
+        Execute a "Host to Gateway" diagram query for the given set of parameters.
 
         Parameters
         ----------
@@ -195,17 +220,16 @@ class IPFDiagramPathMixin(IPFBaseClient):
 
         Returns
         -------
-        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.  
-        If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
-        
-        For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+        E2E object json contains a dictionary with 'graphResult' and
+        'pathlookup' primary keys. If SVG set to True E2E.svg will contain
+        bytes data of SVG image you can write to a file or process in webpage.
         """
         self.check_subnets(src_ip)
         parameters = dict(
             startingPoint=src_ip,
             type="pathLookup",
             pathLookupType="hostToDefaultGW",
-            groupBy=grouping
+            groupBy=grouping,
         )
         return await self.submit_query(parameters)
 
@@ -222,10 +246,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
         -------
         Dictionary if JSON or Bytes if SVG
         """
-        data = dict(
-                parameters=parameters,
-                snapshot=self.active_snapshot
-        )
+        data = dict(parameters=parameters, snapshot=self.active_snapshot)
         api = URIs.json_path if self.svg is False else URIs.svg_path
         res = await self.api.post(api, json=data)
         res.raise_for_status()
@@ -233,7 +254,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
             return res.content
         else:
             return res.json()
-    
+
     @staticmethod
     def check_proto(parameters, flags) -> dict:
         """
@@ -250,18 +271,20 @@ class IPFDiagramPathMixin(IPFBaseClient):
         -------
         dict: formatted parameters, removing ports if icmp
         """
-        if parameters['protocol'] == 'tcp' and flags:
-            if all(x in ['ack', 'fin', 'psh', 'rst', 'syn', 'urg'] for x in flags):
-                parameters['flags'] = flags
+        if parameters["protocol"] == "tcp" and flags:
+            if all(x in ["ack", "fin", "psh", "rst", "syn", "urg"] for x in flags):
+                parameters["flags"] = flags
             else:
-                raise SyntaxError("Only accepted TCP flags are ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']")
-        elif parameters['protocol'] == 'icmp':
-            parameters.pop('startingPort', None)
-            parameters.pop('destinationPort', None)
-            parameters.pop('sourcePort', None)
-            parameters.pop('groupPort', None)
+                raise SyntaxError(
+                    "Only accepted TCP flags are ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']"
+                )
+        elif parameters["protocol"] == "icmp":
+            parameters.pop("startingPort", None)
+            parameters.pop("destinationPort", None)
+            parameters.pop("sourcePort", None)
+            parameters.pop("groupPort", None)
         return parameters
-    
+
     @staticmethod
     def check_subnets(*ips) -> bool:
         """

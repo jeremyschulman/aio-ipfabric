@@ -27,7 +27,7 @@ async def as_completed(
 
     timeout: int
         (seconds, same as asyncio.as_completed):
-        If provided an asyncio.TimeoutError will be raised if all of the
+        If provided an asyncio.TimeoutError will be raised if all
         coroutines have not completed within the timeout value.
 
     Yields
@@ -47,9 +47,9 @@ async def as_completed(
 
         async for probe_task in as_completed(tasks):
             try:
-                # obtain the originating coroutine so we can use it as an index
-                # into the tasks dictionary and obtain the associated inventory
-                # record
+                # obtain the originating coroutine so that we can use it as an
+                # index into the tasks dictionary and obtain the associated
+                # inventory record
 
                 task_coro = probe_task.get_coro()
                 rec = tasks[task_coro]
@@ -77,7 +77,7 @@ async def as_completed(
     # builtin on_completed to yield the results.
 
     def wrap_coro(coro):
-        """used so we can retrieved the original coro via task.get_coro()"""
+        """used so we can retrieve the original coro via task.get_coro()"""
         fut = asyncio.ensure_future(coro)
         wrapper = loop.create_future()
         fut.add_done_callback(wrapper.set_result)
