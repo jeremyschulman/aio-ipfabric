@@ -171,16 +171,9 @@ class IPFDiagramPathMixin(IPFBaseClient):
 
         Returns
         -------
-        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.
-        If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
-
-        References
-        ----------
-        For more details refer to this feature, see IPF blog:
-        https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
-
-        enable_regions added in v5:
-        https://docs.ipfabric.io/main/releases/release_notes/5.0/
+        E2E object json contains a dictionary with 'graphResult' and
+        'pathlookup' primary keys. If SVG set to True E2E.svg will contain
+        bytes data of SVG image you can write to a file or process in webpage.
         """
         if self.check_subnets(src_ip, grp_ip):
             raise SyntaxError(
@@ -227,10 +220,9 @@ class IPFDiagramPathMixin(IPFBaseClient):
 
         Returns
         -------
-        E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.
-        If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
-
-        For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+        E2E object json contains a dictionary with 'graphResult' and
+        'pathlookup' primary keys. If SVG set to True E2E.svg will contain
+        bytes data of SVG image you can write to a file or process in webpage.
         """
         self.check_subnets(src_ip)
         parameters = dict(
