@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import http
 
 # -----------------------------------------------------------------------------
 # System Imports
@@ -66,8 +67,6 @@ class IPFBaseClient(object):
     attribute, which is an instance of the IPFSession (async HTTP client
     instance).
     """
-
-    API_VER = "/api/v5.0/"
 
     @dataclass
     class ENV:
@@ -126,9 +125,6 @@ class IPFBaseClient(object):
         # if the Caller does not provide a base_url that has the '/api/v'
         # substring then use the default API version for the class.
 
-        if "/api/v" not in base_url:
-            base_url = base_url + self.API_VER
-
         self.api = IPFSession(
             base_url=base_url,
             token=token,
@@ -160,12 +156,34 @@ class IPFBaseClient(object):
             raise ValueError(name)
         self._active_snapshot = s_id
 
+    async def discover_api_version(self):
+        """
+        If the '/api/v' substring is to provided by the Caller then this
+        method will attempt to discover the IPF product version.  As of v5,
+        there is a new endpoint '/api/version' that does NOT require
+        authentication to acceess. if that endpoint exists, then use the
+        version in the response payload to form the basse URL.  If then
+        endpoint does not exist (404) then using a version of IPF < v5.
+        """
+
+        res = await self.api.get("/api/version")
+
+        self.api.base_url = self.api.base_url.join(
+            "/api/v1/"
+            if res.status_code == http.HTTPStatus.NOT_FOUND
+            else f"/api/{res.json()['apiVersion']}"
+        )
+
     async def login(self):
         """
         Coroutine to perform the initial login authentication process, retrieve the list
         of current snapshots, and set the `active_snapshot` attribute to the latest loaded
         snapshot.
         """
+
+        if "/api/v" not in str(self.api.base_url):
+            await self.discover_api_version()
+
         if self.api.token and self.api.is_closed:
             self.api = IPFSession(base_url=str(self.api.base_url), token=self.api.token)
 
