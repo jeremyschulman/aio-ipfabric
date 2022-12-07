@@ -50,6 +50,14 @@ class IPFDiagramPathMixin(IPFBaseClient):
     """
     Mixin for Path Lookup queries.
     After initializing you can set SVG to True to return SVG object instead of JSON data
+
+    References
+    ----------
+    For more details refer to this feature, see IPF blog:
+    https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+
+    "Region" support added in v5:
+    https://docs.ipfabric.io/main/releases/release_notes/5.0/
     """
 
     svg: bool = False
@@ -64,6 +72,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
         sec_drop: Optional[bool] = True,
         grouping: Optional[str] = "siteName",
         flags: Optional[list] = None,
+        **opt_args,
     ) -> Union[dict, bytes]:
         """
         Execute an "End-to-End Path" diagram query for the given set of parameters.
@@ -88,6 +97,11 @@ class IPFDiagramPathMixin(IPFBaseClient):
             TCP flags, defaults to None. Must be a list and only allowed values
             can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
 
+        Other Parameters
+        ----------------
+        As of IPF v5 there are additional parameters for use with "regions".  Refer to the
+        documentation, and use those parameter names as-is and as described.
+
         Returns
         -------
         E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.
@@ -106,6 +120,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
             pathLookupType="unicast",
             groupBy=grouping,
             networkMode=self.check_subnets(src_ip, dst_ip),
+            **opt_args,
         )
         parameters = self.check_proto(parameters, flags)
 
@@ -122,6 +137,7 @@ class IPFDiagramPathMixin(IPFBaseClient):
         sec_drop: Optional[bool] = True,
         grouping: Optional[str] = "siteName",
         flags: Optional[list] = None,
+        **opt_args,
     ) -> Union[dict, bytes]:
         """
         Execute an "End-to-End Path" diagram query for the given set of parameters.
@@ -148,12 +164,23 @@ class IPFDiagramPathMixin(IPFBaseClient):
             TCP flags, defaults to None. Must be a list and only allowed values
             can be subet of ['ack', 'fin', 'psh', 'rst', 'syn', 'urg']
 
+        Other Parameters
+        ----------------
+        As of IPF v5 there are additional parameters for use with "regions".  Refer to the
+        documentation, and use those parameter names as-is and as described.
+
         Returns
         -------
         E2E object json contains a dictionary with 'graphResult' and 'pathlookup' primary keys.
         If SVG set to True E2E.svg will contain bytes data of SVG image you can write to a file or process in webpage.
 
-        For more details refer to this IPF blog: https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+        References
+        ----------
+        For more details refer to this feature, see IPF blog:
+        https://ipfabric.io/blog/end-to-end-path-simulation-with-api/
+
+        enable_regions added in v5:
+        https://docs.ipfabric.io/main/releases/release_notes/5.0/
         """
         if self.check_subnets(src_ip, grp_ip):
             raise SyntaxError(
@@ -170,7 +197,9 @@ class IPFDiagramPathMixin(IPFBaseClient):
             securedPath=sec_drop,
             pathLookupType="multicast",
             groupBy=grouping,
+            **opt_args,
         )
+
         if rec_ip:
             if self.check_subnets(rec_ip):
                 raise SyntaxError(
